@@ -1,9 +1,16 @@
-# Microdatos originales — nunca se publican (términos de uso ICFES)
-data/raw/
+# Datos originales — estructura visible, contenido excluido
+data/raw/*
+!data/raw/.gitkeep
 
 # Datos procesados — se regeneran solos al correr run_all.R
 data/processed/*
 !data/processed/.gitkeep
+
+# Salidas generadas — se regeneran solas al correr run_all.R
+outputs/
+
+# Logs
+logs/
 
 # Archivos temporales de R
 .Rhistory
@@ -18,6 +25,3 @@ renv/staging/
 # Sistema
 .DS_Store
 Thumbs.db
-
-# agrega esta línea a tu .gitignore
-data/processed/
