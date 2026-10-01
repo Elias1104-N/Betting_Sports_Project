@@ -1,0 +1,5 @@
+Operador,Estadistico_HL,Grados_libertad,Valor_p,Rechaza_calibracion_perfecta_0.05,Desviacion_media_abs_pp
+B365,12.8,8,0.1191,FALSE,1.66
+PS,8.23,8,0.4111,FALSE,1.05
+PSC,12.15,8,0.1445,FALSE,1.52
+WH,27.6,8,0.0005568,TRUE,2.72

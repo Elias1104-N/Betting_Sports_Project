@@ -1,0 +1,23 @@
+# Microdatos originales — nunca se publican (términos de uso ICFES)
+data/raw/
+
+# Datos procesados — se regeneran solos al correr run_all.R
+data/processed/*
+!data/processed/.gitkeep
+
+# Archivos temporales de R
+.Rhistory
+.RData
+.Rproj.user/
+
+# renv: la librería de paquetes NO se sube, pero renv.lock y activate.R sí
+renv/library/
+renv/local/
+renv/staging/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# agrega esta línea a tu .gitignore
+data/processed/
