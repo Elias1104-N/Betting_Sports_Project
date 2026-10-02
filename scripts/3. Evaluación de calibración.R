@@ -128,8 +128,20 @@ message("Mejora_vs_*_pct > 0 significa que el operador es mejor que esa línea b
 # perfecta aunque la desviación sea mínima. Por eso SIEMPRE se reporta
 # junto con la magnitud de la desviación en puntos porcentuales
 # (ya calculada en la curva de calibración, columna Desviacion_pp).
-prueba_hosmer_lemeshow <- function(dt_largo, operador, n_bins = N_BINS) {
-  d <- dt_largo[Operador == operador]
+
+# IMPORTANTE (trampa metodológica): cada partido aporta 3 filas al
+# formato largo (H, D, A), que NO son independientes entre sí (si
+# ocurrió H, no ocurrieron D ni A). Agrupar las tres en el mismo
+# test de bondad de ajuste viola el supuesto de independencia del
+# chi-cuadrado. Por eso el test se corre POR SEPARADO para cada
+# resultado: dentro de una sola categoría (ej. "H"), cada partido
+# aporta exactamente una fila, así que ahí sí son observaciones
+# independientes entre partidos (la dependencia más amplia entre
+# partidos de la misma temporada/jornada queda como limitación
+# declarada, no resuelta por este cambio).
+
+prueba_hosmer_lemeshow <- function(dt_largo, operador, resultado, n_bins = N_BINS) {
+  d <- dt_largo[Operador == operador & Resultado_evaluado == resultado]
   d[, bin := cut(Prob_predicha, breaks = seq(0, 1, length.out = n_bins + 1),
                  include.lowest = TRUE, labels = FALSE)]
   
@@ -139,28 +151,32 @@ prueba_hosmer_lemeshow <- function(dt_largo, operador, n_bins = N_BINS) {
     Predicho = sum(Prob_predicha)
   ), by = bin]
   
-  # Estadístico chi-cuadrado de Hosmer-Lemeshow
   resumen[, chi2_termino := (Observado - Predicho)^2 / (Predicho * (1 - Predicho / N))]
+  resumen[, Desviacion_pp := 100 * (Observado / N - Predicho / N)]
+  
   estadistico <- sum(resumen$chi2_termino, na.rm = TRUE)
-  gl <- n_bins - 2  # grados de libertad estándar de HL
+  gl <- n_bins - 2
   p_valor <- pchisq(estadistico, df = gl, lower.tail = FALSE)
   
   data.table(
     Operador = operador,
+    Resultado = resultado,
     Estadistico_HL = round(estadistico, 2),
     Grados_libertad = gl,
     Valor_p = signif(p_valor, 4),
-    Rechaza_calibracion_perfecta_0.05 = p_valor < 0.05
+    Rechaza_calibracion_perfecta_0.05 = p_valor < 0.05,
+    Desviacion_media_abs_pp = round(mean(abs(resumen$Desviacion_pp)), 2)
   )
 }
 
-tabla_hl <- rbindlist(lapply(OPERADORES_PRINCIPALES, prueba_hosmer_lemeshow, dt_largo = datos_largos))
-
-# Cruzar con la magnitud media de desviación (en pp) de cada operador,
-# para no reportar el p-valor solo (penalizado en la rúbrica: -5 pts).
-magnitud_media <- curva_igual_ancho[, .(Desviacion_media_abs_pp = round(mean(abs(Desviacion_pp)), 2)),
-                                    by = Operador]
-tabla_hl <- merge(tabla_hl, magnitud_media, by = "Operador")
+combinaciones_hl <- CJ(Operador = OPERADORES_PRINCIPALES, Resultado = c("H", "D", "A"))
+tabla_hl <- rbindlist(mapply(
+  prueba_hosmer_lemeshow,
+  operador = combinaciones_hl$Operador,
+  resultado = combinaciones_hl$Resultado,
+  MoreArgs = list(dt_largo = datos_largos),
+  SIMPLIFY = FALSE
+))
 
 message("\n---- Prueba de bondad de ajuste (Hosmer-Lemeshow) + magnitud de la desviación ----")
 print(tabla_hl)
@@ -216,7 +232,7 @@ mostrar_resumen_fase3 <- function() {
   print(tabla_brier[, .(Operador, Brier_operador, Mejora_vs_frecuencia_pct, Mejora_vs_uniforme_pct)])
   cat("--------------------------------------------------\n")
   cat("Hosmer-Lemeshow + magnitud de la desviación:\n")
-  print(tabla_hl[, .(Operador, Valor_p, Rechaza_calibracion_perfecta_0.05, Desviacion_media_abs_pp)])
+  print(tabla_hl[, .(Operador, Resultado, Valor_p, Rechaza_calibracion_perfecta_0.05, Desviacion_media_abs_pp)])
   cat("--------------------------------------------------\n")
   dif_esquemas <- sensibilidad_agrupamiento[, .(
     Rango_desviacion_pp = round(max(Desviacion_media_abs_pp) - min(Desviacion_media_abs_pp), 2)
