@@ -17,13 +17,9 @@
 # con signo), NO con una prueba de muestras independientes.
 # ============================================================
 
-library(data.table)
-library(binom)
+source("config.R")
 
-DIR_OUT <- "outputs"
 base <- fread(file.path(DIR_OUT, "base_con_probabilidades.csv"), encoding = "UTF-8")
-
-N_BINS <- 10
 
 # ---- 0. Reconstruir formato largo (igual que en la Fase 3) --------
 construir_formato_largo <- function(dt, operador) {
@@ -50,7 +46,6 @@ construir_formato_largo <- function(dt, operador) {
   largo
 }
 
-OPERADORES_PRINCIPALES <- c("B365", "PS", "PSC", "WH")
 datos_largos <- rbindlist(lapply(OPERADORES_PRINCIPALES, construir_formato_largo, dt = base))
 
 # ============================================================

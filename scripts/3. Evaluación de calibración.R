@@ -1,18 +1,8 @@
 #Fase 3 - Evaluación de la calibración
 
-library(data.table)
+source("config.R")
 
-paquetes <- c("binom")
-instalar_faltantes <- paquetes[!paquetes %in% rownames(installed.packages())]
-if (length(instalar_faltantes) > 0) install.packages(instalar_faltantes)
-library(binom)
-
-DIR_OUT <- "outputs"
 base <- fread(file.path(DIR_OUT, "base_con_probabilidades.csv"), encoding = "UTF-8")
-
-# ---- 0. Parámetros ------------------------------------------------
-OPERADORES_PRINCIPALES <- c("B365", "PS", "PSC", "WH")
-N_BINS <- 10  # esquema principal: 10 intervalos de igual ancho
 
 # ---- 1. Construir formato "largo" (pooled) por operador -----------
 # Para cada operador y cada partido, generamos 3 filas: una por

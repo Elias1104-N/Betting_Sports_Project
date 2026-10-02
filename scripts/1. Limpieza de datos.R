@@ -1,19 +1,6 @@
 #1 Limpieza de los datos 
 
-# ---- 0. Parámetros 
-LIGAS <- c("E0", "SP1")                 # E0 = Premier League, SP1 = La Liga
-NOMBRES_LIGA <- c(E0 = "Premier League", SP1 = "La Liga")
-
-# football-data.co.uk codifica la temporada como "AABB"
-# (ej. "1213" = temporada 2012/13). Generamos 2012/13 ... 2019/20.
-anios_inicio <- 2012:2019
-TEMPORADAS <- sprintf("%02d%02d", anios_inicio %% 100, (anios_inicio + 1) %% 100)
-
-DIR_RAW  <- "data/raw"
-DIR_OUT  <- "outputs"
-
-dir.create(DIR_RAW, recursive = TRUE, showWarnings = FALSE)
-dir.create(DIR_OUT, recursive = TRUE, showWarnings = FALSE)
+source("config.R")
 
 # ---- 1. Paquetes ---------------------------------------------
 paquetes <- c("data.table", "dplyr", "purrr", "readr", "stringr", "lubridate")

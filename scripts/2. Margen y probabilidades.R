@@ -10,10 +10,7 @@
 # (análisis de sensibilidad).
 # ============================================================
 
-library(data.table)
-
-DIR_OUT <- "outputs"
-dir.create(DIR_OUT, recursive = TRUE, showWarnings = FALSE)
+source("config.R")
 
 base <- fread(file.path(DIR_OUT, "base_consolidada.csv"), encoding = "UTF-8")
 

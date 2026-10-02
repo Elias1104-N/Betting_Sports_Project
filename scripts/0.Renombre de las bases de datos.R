@@ -1,16 +1,11 @@
 
 #Cambio de nombre para cada archivo 
 
-library(data.table)
-
-DIR_RAW <- "data/raw"
-dir.create(DIR_RAW, recursive = TRUE, showWarnings = FALSE)
+source("config.R")
 
 # La carpeta de origen y destino es la misma: renombramos in situ.
 CARPETA_ORIGEN <- DIR_RAW
-
-# Ligas que nos interesan y su código de división esperado
-LIGAS_VALIDAS <- c("E0", "SP1")
+LIGAS_VALIDAS <- LIGAS
 
 # Determina la temporada (formato "1213") a partir de una fecha
 # dd/mm/yyyy o dd/mm/yy. Usa agosto como corte (la temporada
@@ -105,9 +100,7 @@ message("\n---- Resumen ----")
 print(resumen, row.names = FALSE)
 
 # Verificación final: ¿tenemos las 16 combinaciones esperadas?
-anios_inicio <- 2012:2019
-temporadas_esperadas <- sprintf("%02d%02d", anios_inicio %% 100, (anios_inicio + 1) %% 100)
-esperados <- expand.grid(liga = LIGAS_VALIDAS, temporada = temporadas_esperadas,
+esperados <- expand.grid(liga = LIGAS_VALIDAS, temporada = TEMPORADAS,
                          stringsAsFactors = FALSE)
 esperados$ruta <- file.path(DIR_RAW, sprintf("%s_%s.csv", esperados$liga, esperados$temporada))
 esperados$existe <- file.exists(esperados$ruta)
