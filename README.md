@@ -1,5 +1,9 @@
 # ¿Están bien calibradas las casas de apuestas?
 
+![R](https://img.shields.io/badge/R-%E2%89%A5%204.1-blue)
+![renv](https://img.shields.io/badge/reproducible-renv-brightgreen)
+![Status](https://img.shields.io/badge/status-completo-success)
+
 ## Autores
 
 - Elias Jose Parra Royero
@@ -8,6 +12,16 @@
 Análisis metodológico de las probabilidades implícitas en cuotas 1X2 (Victoria Local / Empate / Victoria Visitante). El proyecto no busca una estrategia de apuestas — evalúa, con rigor estadístico, qué tan bien calibradas están las probabilidades que publican distintas casas de apuestas frente a lo que realmente ocurre en los partidos.
 
 **El margen de las casas garantiza, en promedio, un valor esperado negativo para quien apuesta.** Este trabajo no intenta vencer esa ventaja: audita la calidad de un pronóstico ajeno, el mismo ejercicio que se aplica a modelos de riesgo crediticio, pronóstico del clima o mantenimiento predictivo.
+
+## Contenido
+- [Alcance](#alcance)
+- [Estructura del repositorio](#estructura-del-repositorio)
+- [Requisitos previos](#requisitos-previos)
+- [Preparar los datos](#preparar-los-datos-paso-manual-obligatorio-antes-de-correr-el-flujo)
+- [Cómo correr el análisis completo](#cómo-correr-el-análisis-completo)
+- [Qué hace cada fase](#qué-hace-cada-fase)
+- [Metodología — decisiones relevantes](#metodología--decisiones-relevantes)
+- [Encuadre](#encuadre)
 
 ## Alcance
 
@@ -21,6 +35,9 @@ Análisis metodológico de las probabilidades implícitas en cuotas 1X2 (Victori
 Todo el alcance (ligas, temporadas, operadores) y los parámetros metodológicos (número de intervalos, réplicas bootstrap, semilla, fechas de corte) se controlan desde un único archivo: `config.R`. No hay valores hardcodeados en ningún otro script.
 
 > **Nota sobre Pinnacle:** football-data.co.uk advierte que las cuotas de Pinnacle publicadas después del 23 de julio de 2025 son poco confiables (su API de entrega quedó desactualizada). El alcance de este proyecto (2012–2019) es anterior a esa fecha, por lo que no afecta ningún resultado. Aun así, el flujo incluye una guarda en la Fase 1: si se amplía el alcance a temporadas posteriores, las cuotas PS/PSC de los partidos desde esa fecha se anulan (NA) automáticamente para no medir un artefacto de recolección. La fecha de corte y los prefijos afectados se definen en `config.R`.
+
+![Margen Comercial](documentos/Margen Comercial.png) *Ejemplo de salida del reporte autogenerado (outputs/reporte_calibracion.html)*
+
 
 ## Estructura del repositorio
 
