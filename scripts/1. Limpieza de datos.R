@@ -202,7 +202,7 @@ cat("(Estos son los operadores más confiables para comparar entre sí en la Fas
 fwrite(base_valida, file.path(DIR_OUT, "base_consolidada.csv"))
 fwrite(inventario, file.path(DIR_OUT, "inventario_cobertura.csv"))
 
-message("Listo. Archivos guardados en data/processed/:")
+message("Listo. Archivos guardados en outputs/:")
 message(" - base_consolidada.csv")
 message(" - inventario_cobertura.csv")
 

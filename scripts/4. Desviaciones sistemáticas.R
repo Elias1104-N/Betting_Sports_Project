@@ -183,7 +183,7 @@ fwrite(favlong, file.path(DIR_OUT, "sesgo_favorito_longshot_detalle.csv"))
 fwrite(contraste_favlong, file.path(DIR_OUT, "sesgo_favorito_longshot_contraste.csv"))
 fwrite(resumen_apertura_cierre, file.path(DIR_OUT, "apertura_vs_cierre.csv"))
 
-message("\nListo. Archivos guardados en data/processed/:")
+message("\nListo. Archivos guardados en outputs/:")
 message(" - sesgo_favorito_longshot_detalle.csv")
 message(" - sesgo_favorito_longshot_contraste.csv")
 message(" - apertura_vs_cierre.csv")

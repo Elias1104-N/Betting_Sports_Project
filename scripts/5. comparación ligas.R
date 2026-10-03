@@ -10,7 +10,7 @@
 #
 # Requiere haber corrido antes las Fases 1-2 (necesita
 # base_con_probabilidades.csv y distribucion_margen.csv en
-# data/processed/).
+# outputs/).
 #
 # Preguntas que responde:
 #   A) ¿El margen (overround) es distinto entre Premier League y
@@ -139,7 +139,7 @@ fwrite(margen_por_liga, file.path(DIR_OUT, "margen_por_liga.csv"))
 fwrite(brier_por_liga, file.path(DIR_OUT, "brier_por_liga.csv"))
 fwrite(contraste_ligas, file.path(DIR_OUT, "contraste_ligas.csv"))
 
-message("\nListo. Archivos guardados en data/processed/:")
+message("\nListo. Archivos guardados en outputs/:")
 message(" - margen_por_liga.csv")
 message(" - brier_por_liga.csv")
 message(" - contraste_ligas.csv")

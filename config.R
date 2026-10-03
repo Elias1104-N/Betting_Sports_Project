@@ -42,7 +42,8 @@ dir.create(DIR_OUT, recursive = TRUE, showWarnings = FALSE)
 # ---- Paquetes usados en todo el flujo -------------------------------
 
 paquetes_proyecto <- c("data.table", "dplyr", "purrr", "readr", "stringr",
-                        "lubridate", "binom")
+                       "lubridate", "binom", "ggplot2", "rmarkdown", "knitr")
+
 faltantes <- paquetes_proyecto[!paquetes_proyecto %in% rownames(installed.packages())]
 if (length(faltantes) > 0) install.packages(faltantes)
 invisible(lapply(paquetes_proyecto, library, character.only = TRUE))

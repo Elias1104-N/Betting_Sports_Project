@@ -10,6 +10,7 @@ tiempo_inicio <- Sys.time()
 # mientras que config.R y este run_all.R están en la raíz del
 # proyecto (junto al .Rproj y a la carpeta data/). Ajusta la ruta
 # si tu estructura es distinta.
+
 CARPETA_SCRIPTS <- "scripts"
 
 source("config.R")
@@ -31,6 +32,18 @@ source(file.path(CARPETA_SCRIPTS, "4. Desviaciones sistemáticas.R"))
 
 cat("\n\n>>> FASE 5: Comparación entre ligas (Premier League vs. La Liga)...\n\n")
 source(file.path(CARPETA_SCRIPTS, "5. comparación ligas.R"))
+
+# ---- Fase 6: Reporte de calibración autogenerado --------------------
+message("\n==== FASE 6: Generando reporte de calibración ====")
+rmarkdown::render(
+  input = file.path(CARPETA_SCRIPTS, "6. Reporte de calibración.Rmd"),
+  output_dir = DIR_OUT,
+  output_file = "reporte_calibracion.html",
+  quiet = TRUE,
+  knit_root_dir = getwd(),   # <- nuevo: fuerza que los chunks corran con wd = raíz del proyecto
+  envir = new.env()
+)
+message("Reporte generado en outputs/reporte_calibracion.html")
 
 tiempo_fin <- Sys.time()
 

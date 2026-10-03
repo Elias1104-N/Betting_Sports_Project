@@ -1,0 +1,178 @@
+---
+title: "Reporte de Calibración — Casas de Apuestas 1X2"
+subtitle: "Generado automáticamente por run_all.R"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, fig.width = 9)
+
+# Este .Rmd se renderiza DESDE run_all.R con working directory en la raíz
+# del proyecto, así que source("config.R") funciona igual que en los
+# demás scripts. Si lo abres manualmente en RStudio para probarlo,
+# asegúrate de que el working directory sea la raíz del proyecto
+# (Session -> Set Working Directory -> To Project Directory).
+source("config.R")
+library(ggplot2)
+
+leer_si_existe <- function(path) {
+  if (file.exists(path)) fread(path, encoding = "UTF-8") else NULL
+}
+
+curva          <- leer_si_existe(file.path(DIR_OUT, "curva_calibracion_igual_ancho.csv"))
+brier          <- leer_si_existe(file.path(DIR_OUT, "brier_score.csv"))
+rps            <- leer_si_existe(file.path(DIR_OUT, "rps_score.csv"))
+murphy         <- leer_si_existe(file.path(DIR_OUT, "descomposicion_murphy.csv"))
+hl             <- leer_si_existe(file.path(DIR_OUT, "hosmer_lemeshow.csv"))
+sens_bruta     <- leer_si_existe(file.path(DIR_OUT, "sensibilidad_metodos.csv"))
+sens_concl     <- leer_si_existe(file.path(DIR_OUT, "sensibilidad_conclusiones_metodos.csv"))
+sens_bins      <- leer_si_existe(file.path(DIR_OUT, "sensibilidad_agrupamiento.csv"))
+
+faltantes_criticos <- c(
+  "curva_calibracion_igual_ancho.csv"[is.null(curva)],
+  "brier_score.csv"[is.null(brier)],
+  "sensibilidad_metodos.csv"[is.null(sens_bruta)]
+)
+if (length(faltantes_criticos) > 0) {
+  stop(sprintf(
+    "Faltan archivos de entrada para el reporte: %s. Corre run_all.R completo (Fases 2 y 3) antes de generar este reporte.",
+    paste(faltantes_criticos, collapse = ", ")
+  ))
+}
+```
+
+## Alcance de este reporte
+
+```{r alcance, results='asis'}
+cat(sprintf(
+  "- **Ligas:** %s\n- **Temporadas:** %s a %s (%d temporadas)\n- **Operadores principales:** %s\n- **Generado el:** %s\n",
+  paste(NOMBRES_LIGA[LIGAS], collapse = ", "),
+  TEMPORADAS[1], TEMPORADAS[length(TEMPORADAS)], length(TEMPORADAS),
+  paste(OPERADORES_PRINCIPALES, collapse = ", "),
+  format(Sys.time(), "%Y-%m-%d %H:%M")
+))
+```
+
+Este reporte se regenera automáticamente cada vez que se ejecuta `run_all.R`. Si cambias el alcance (ligas, temporadas u operadores) en `config.R`, este encabezado y todas las tablas/gráficos siguientes se actualizan solos, sin editar nada aquí.
+
+---
+
+## 1. Curvas de calibración con intervalos de confianza (Wilson)
+
+Cada punto es un intervalo de probabilidad predicha; la línea punteada marca la calibración perfecta (lo observado coincide exactamente con lo predicho). Las barras son intervalos de Wilson al 95%.
+
+```{r curvas-calibracion, fig.height=6}
+ggplot(curva, aes(x = Prob_predicha_media, y = Frecuencia_observada)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  geom_errorbar(aes(ymin = IC_inferior, ymax = IC_superior), width = 0.01, color = "steelblue") +
+  geom_point(aes(size = N), color = "steelblue") +
+  facet_wrap(~ Operador) +
+  coord_equal(xlim = c(0, 1), ylim = c(0, 1)) +
+  labs(
+    title = "Curva de calibración por operador (10 bins, igual ancho)",
+    x = "Probabilidad media predicha", y = "Frecuencia observada",
+    size = "N partidos"
+  ) +
+  theme_minimal(base_size = 11)
+```
+
+## 2. Tabla de desviaciones por intervalo
+
+Desviación = frecuencia observada − probabilidad predicha, en puntos porcentuales. Valores positivos: el operador *subestimó* ese resultado (ocurre más de lo que decía el precio). Valores negativos: lo *sobrestimó*.
+
+```{r tabla-desviaciones, results='asis'}
+for (op in OPERADORES_PRINCIPALES) {
+  cat(sprintf("\n#### %s\n\n", op))
+  tab <- curva[Operador == op, .(
+    Bin = bin, N,
+    `Prob. predicha` = round(Prob_predicha_media, 3),
+    `Frec. observada` = round(Frecuencia_observada, 3),
+    `IC Wilson` = sprintf("[%.3f, %.3f]", IC_inferior, IC_superior),
+    `Desviación (pp)` = round(Desviacion_pp, 2)
+  )]
+  cat(knitr::kable(tab, format = "pipe"), sep = "\n")
+  cat("\n")
+}
+```
+
+## 3. Reglas de puntuación
+
+### 3.1 Brier Score (contra líneas base)
+
+Menor es mejor. `Mejora_vs_frecuencia_pct` > 0 significa que el operador predice mejor que usar siempre la frecuencia histórica.
+
+```{r brier, results='asis'}
+cat(knitr::kable(brier[, .(Operador, Brier_operador, Brier_linea_base_frecuencia,
+                           Brier_linea_base_uniforme, Mejora_vs_frecuencia_pct)],
+                 format = "pipe"), sep = "\n")
+```
+
+```{r rps-murphy, results='asis', eval = !is.null(rps) && !is.null(murphy)}
+cat("\n### 3.2 Ranked Probability Score (RPS) — bonificación\n\n")
+cat("Penaliza más fuerte los errores alejados en la escala ordenada H-D-A.\n\n")
+cat(knitr::kable(rps[, .(Operador, RPS_operador, RPS_linea_base_frecuencia, Mejora_vs_frecuencia_pct)],
+                 format = "pipe"), sep = "\n")
+
+cat("\n### 3.3 Descomposición de Murphy — bonificación\n\n")
+cat("Brier = Fiabilidad (descalibración, menor es mejor) − Resolución (capacidad discriminativa, mayor es mejor) + Incertidumbre (constante, fuera del control del operador).\n\n")
+cat(knitr::kable(murphy[, .(Operador, Fiabilidad_Reliability, Resolucion_Resolution, Incertidumbre_Uncertainty)],
+                 format = "pipe"), sep = "\n")
+```
+
+### 3.4 Prueba de bondad de ajuste (Hosmer-Lemeshow)
+
+Separada por resultado (H/D/A) porque las filas de un mismo partido no son independientes entre sí (ver metodología). Se muestra el valor p crudo y el ajustado por Holm (12 pruebas evaluadas en conjunto: 4 operadores × 3 resultados).
+
+```{r hl, results='asis', eval = !is.null(hl)}
+cols_hl <- intersect(c("Operador", "Resultado", "Valor_p", "Valor_p_ajustado_Holm",
+                       "Significativo_Holm_0.05", "Desviacion_media_abs_pp"), names(hl))
+cat(knitr::kable(hl[, ..cols_hl], format = "pipe"), sep = "\n")
+cat("\n\n*Recordatorio: significancia estadística no implica relevancia práctica — revisar siempre junto a `Desviacion_media_abs_pp`.*\n")
+```
+
+## 4. Comparación entre métodos de remoción del margen
+
+### 4.1 Diferencia directa en probabilidades (prob. de H)
+
+Diferencia absoluta en puntos porcentuales entre métodos, sobre la probabilidad normalizada del resultado "Victoria Local".
+
+```{r sens-bruta, results='asis'}
+cat(knitr::kable(sens_bruta[Tipo == "Casa real", .(
+  Operador, Comparacion,
+  `Dif. media (pp)` = round(Dif_media_pp, 3),
+  `Dif. p95 (pp)` = round(Dif_p95_pp, 3)
+)], format = "pipe"), sep = "\n")
+```
+
+### 4.2 Impacto en las conclusiones (Brier, RPS, Fiabilidad, Desviación)
+
+Esta es la comparación que de verdad importa: no si las probabilidades cambian un poco entre métodos, sino si **las conclusiones sobre calibración cambian** según el método elegido.
+
+```{r sens-concl, results='asis', eval = !is.null(sens_concl)}
+for (op in OPERADORES_PRINCIPALES) {
+  cat(sprintf("\n#### %s\n\n", op))
+  tab <- sens_concl[Operador == op, .(
+    Metodo, Brier, RPS, Fiabilidad_Murphy, `Desviación media (pp)` = Desviacion_media_abs_pp
+  )]
+  cat(knitr::kable(tab, format = "pipe"), sep = "\n")
+  cat("\n")
+}
+
+rango_brier <- sens_concl[, .(Rango_Brier = round(max(Brier) - min(Brier), 4)), by = Operador]
+cat("\n**Rango de Brier entre métodos (máx − mín), por operador:**\n\n")
+cat(knitr::kable(rango_brier, format = "pipe"), sep = "\n")
+cat("\nUn rango pequeño indica que la conclusión sobre qué tan bien calibrado está un operador **no depende** del método de remoción del margen elegido.\n")
+```
+
+```{r sens-bins, results='asis', eval = !is.null(sens_bins)}
+cat("\n### 4.3 Sensibilidad al esquema de agrupamiento (contexto adicional)\n\n")
+cat(knitr::kable(sens_bins, format = "pipe"), sep = "\n")
+```
+
+---
+
+*Reporte generado automáticamente — no editar manualmente. Para modificar su contenido, edita `scripts/6. Reporte de calibración.Rmd` y vuelve a correr `run_all.R`.*
