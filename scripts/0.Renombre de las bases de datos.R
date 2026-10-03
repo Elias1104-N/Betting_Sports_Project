@@ -4,14 +4,12 @@
 source("config.R")
 
 # La carpeta de origen y destino es la misma: renombramos in situ.
-
 CARPETA_ORIGEN <- DIR_RAW
 LIGAS_VALIDAS <- LIGAS
 
 # Determina la temporada (formato "1213") a partir de una fecha
 # dd/mm/yyyy o dd/mm/yy. Usa agosto como corte (la temporada
 # europea arranca en agosto).
-
 inferir_temporada <- function(fechas_txt) {
   fechas <- lubridate::dmy(fechas_txt, quiet = TRUE)
   fechas <- fechas[!is.na(fechas)]
@@ -24,7 +22,6 @@ inferir_temporada <- function(fechas_txt) {
 }
 
 # Busca todos los .csv en la carpeta de origen
-
 candidatos <- list.files(CARPETA_ORIGEN, pattern = "\\.csv$",
                          full.names = TRUE, ignore.case = TRUE)
 
@@ -102,7 +99,7 @@ for (archivo in candidatos) {
 message("\n---- Resumen ----")
 print(resumen, row.names = FALSE)
 
-# Verificación final: ¿tenemos las 16 combinaciones esperadas?
+# Verificación final: ¿tenemos todas las combinaciones liga-temporada esperadas?
 esperados <- expand.grid(liga = LIGAS_VALIDAS, temporada = TEMPORADAS,
                          stringsAsFactors = FALSE)
 esperados$ruta <- file.path(DIR_RAW, sprintf("%s_%s.csv", esperados$liga, esperados$temporada))
@@ -110,9 +107,8 @@ esperados$existe <- file.exists(esperados$ruta)
 
 faltantes <- esperados[!esperados$existe, c("liga", "temporada")]
 if (nrow(faltantes) > 0) {
-  message("\nAÚN FALTAN estas combinaciones en data/raw/:")
+  message(sprintf("\nAÚN FALTAN estas combinaciones en %s/:", DIR_RAW))
   print(faltantes, row.names = FALSE)
 } else {
-  message("\n¡Los 16 archivos esperados están completos en data/raw/!")
+  message(sprintf("\n¡Los %d archivos esperados están completos en %s/!", nrow(esperados), DIR_RAW))
 }
-

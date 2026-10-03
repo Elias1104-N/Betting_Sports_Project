@@ -3,11 +3,7 @@
 source("config.R")
 
 # ---- 1. Paquetes ---------------------------------------------
-
-paquetes <- c("data.table", "dplyr", "purrr", "readr", "stringr", "lubridate")
-instalar_faltantes <- paquetes[!paquetes %in% rownames(installed.packages())]
-if (length(instalar_faltantes) > 0) install.packages(instalar_faltantes)
-invisible(lapply(paquetes, library, character.only = TRUE))
+# La lista de paquetes vive en config.R (única fuente); no se instala nada aquí.
 
 # ---- 2. Verificación de archivos descargados manualmente --------
 # Este script NO descarga nada. Debes bajar tú mismo cada CSV desde
@@ -21,7 +17,6 @@ invisible(lapply(paquetes, library, character.only = TRUE))
 # Nota: el sitio a veces entrega el archivo ya nombrado "E0.csv" o
 # "SP1.csv" sin el sufijo de temporada - hay que renombrarlo al
 # guardarlo, o el script no lo va a encontrar.
-
 combinaciones <- expand.grid(liga = LIGAS, temporada = TEMPORADAS,
                              stringsAsFactors = FALSE)
 combinaciones$ruta <- file.path(DIR_RAW,
@@ -33,7 +28,7 @@ if (nrow(descargas_fallidas) > 0) {
   message("Archivos faltantes en data/raw/ (revisar nombres/descarga manual):")
   print(descargas_fallidas[, c("liga", "temporada")])
 } else {
-  message("Los 16 archivos esperados están presentes en data/raw/.")
+  message(sprintf("Los %d archivos esperados están presentes en %s/.", nrow(combinaciones), DIR_RAW))
 }
 
 # ---- 3. Lectura y consolidación --------------------------------
@@ -41,7 +36,6 @@ if (nrow(descargas_fallidas) > 0) {
 # temporadas y casas de apuestas. Leemos cada archivo por
 # separado y los unimos con rbindlist(fill = TRUE) para no
 # perder columnas que no están en todos los archivos.
-
 leer_archivo <- function(ruta, liga, temporada) {
   if (is.na(ruta)) return(NULL)
   df <- tryCatch(
@@ -54,7 +48,6 @@ leer_archivo <- function(ruta, liga, temporada) {
   if (is.null(df) || nrow(df) == 0) return(NULL)
   
   # Columnas mínimas que debe traer cualquier archivo válido
-  
   requeridas <- c("Div", "Date", "HomeTeam", "AwayTeam", "FTHG", "FTAG", "FTR")
   faltantes <- setdiff(requeridas, names(df))
   if (length(faltantes) > 0) {
@@ -80,7 +73,6 @@ message(sprintf("Base consolidada: %d partidos, %d columnas",
 # football-data.co.uk usa dos formatos de fecha según la época:
 # dd/mm/yy (temporadas antiguas) y dd/mm/yyyy (recientes).
 # parse_date_time prueba ambos en orden.
-
 base[, Date_parsed := lubridate::parse_date_time(
   Date, orders = c("dmy"), quiet = TRUE
 )]
@@ -91,6 +83,36 @@ if (sin_fecha > 0) {
   message(sprintf("Atención: %d filas sin fecha interpretable, revisar", sin_fecha))
 }
 
+# ---- 4.1 Guarda de calidad: cuotas de Pinnacle posteriores al corte ---
+# Football-Data advierte que desde PINNACLE_FECHA_CORTE las cuotas de
+# Pinnacle quedan desactualizadas (tanto apertura como cierre). Se anulan
+# (NA) para no medir un artefacto de recolección. Con el alcance
+# 2012/13-2019/20 no afecta a ninguna fila; protege el flujo si se añaden
+# temporadas nuevas.
+cols_pinnacle <- intersect(as.vector(outer(PINNACLE_PREFIJOS, c("H", "D", "A"), paste0)),
+                           names(base))
+filas_pinnacle <- which(!is.na(base$Date_parsed) & base$Date_parsed >= PINNACLE_FECHA_CORTE)
+n_filas_pinnacle_anuladas <- length(filas_pinnacle)
+if (n_filas_pinnacle_anuladas > 0 && length(cols_pinnacle) > 0) {
+  for (col in cols_pinnacle) set(base, i = filas_pinnacle, j = col, value = NA)
+  message(sprintf("Guarda Pinnacle: %d partidos desde %s -> cuotas %s anuladas (NA).",
+                  n_filas_pinnacle_anuladas, format(PINNACLE_FECHA_CORTE),
+                  paste(PINNACLE_PREFIJOS, collapse = "/")))
+} else {
+  message(sprintf("Guarda Pinnacle: ningún partido desde %s; no se anuló ninguna cuota.",
+                  format(PINNACLE_FECHA_CORTE)))
+}
+
+# ---- 4.2 Marca de partidos posteriores a la reanudación por COVID-19 ---
+# Los partidos de COVID_TEMPORADA desde la fecha de reanudación de cada
+# liga se jugaron a puerta cerrada (ventaja de local distinta). Se marcan
+# para poder hacer una sensibilidad sin ellos (Fase 3).
+fechas_reanudacion <- unname(COVID_REANUDACION[base$Liga])
+base[, Post_reanudacion_COVID := !is.na(fechas_reanudacion) & !is.na(Date_parsed) &
+       Temporada == COVID_TEMPORADA & Date_parsed >= fechas_reanudacion]
+n_post_covid <- sum(base$Post_reanudacion_COVID, na.rm = TRUE)
+message(sprintf("Partidos marcados como posteriores a la reanudación por COVID-19: %d", n_post_covid))
+
 # ---- 5. Validaciones de calidad --------------------------------
 
 # 5.1 Resultado (FTR) consistente con el marcador
@@ -100,14 +122,18 @@ inconsistencias_resultado <- base[FTR != FTR_calculado]
 message(sprintf("Resultados inconsistentes (FTR vs marcador): %d",
                 nrow(inconsistencias_resultado)))
 
-# 5.2 Cuotas imposibles (<= 1) en cualquier columna de cuota
-# Las columnas de cuotas siguen el patrón: PREFIJO + H/D/A
-# (ej. B365H, B365D, B365A, AvgH, MaxH, etc.)
-
-cols_cuotas <- grep("(H|D|A)$", names(base), value = TRUE)
+# 5.2 Cuotas imposibles (<= 1) en las columnas de cuotas 1X2
+# Las columnas de cuotas siguen el patrón PREFIJO + H/D/A (ej. B365H, B365D,
+# B365A, AvgH...). Solo se revisan prefijos con el trío H/D/A COMPLETO: así se
+# evitan falsos positivos como BbAH (conteo de casas, no una cuota) o las
+# columnas de goles (FTHG, HTHG).
+prefijos_1x2 <- unique(sub("H$", "", grep("H$", names(base), value = TRUE)))
+prefijos_1x2 <- setdiff(prefijos_1x2, c("FT", "HT"))
+prefijos_1x2 <- prefijos_1x2[sapply(prefijos_1x2, function(p)
+  all(paste0(p, c("H", "D", "A")) %in% names(base)))]
+cols_cuotas <- as.vector(outer(prefijos_1x2, c("H", "D", "A"), paste0))
+if (length(cols_cuotas) == 0) stop("No se detectaron columnas de cuotas 1X2 (PREFIJO + H/D/A).")
 cols_cuotas <- cols_cuotas[sapply(base[, ..cols_cuotas], is.numeric)]
-# Evitar falsos positivos como FTHG/FTAG/HTHG que no son cuotas
-cols_cuotas <- setdiff(cols_cuotas, c("FTHG", "FTAG", "HTHG", "HTAG"))
 
 cuotas_imposibles <- base[, lapply(.SD, function(x) sum(x <= 1, na.rm = TRUE)),
                           .SDcols = cols_cuotas]
@@ -116,15 +142,19 @@ message(sprintf("Valores de cuota <= 1 detectados: %d (revisar antes de continua
                 cuotas_imposibles_total))
 if (cuotas_imposibles_total > 0) {
   print(cuotas_imposibles[, colSums(cuotas_imposibles) > 0, with = FALSE])
+  # Las cuotas imposibles se anulan (NA) para que no contaminen las probabilidades.
+  for (col in cols_cuotas) {
+    idx <- which(base[[col]] <= 1)
+    if (length(idx) > 0) set(base, i = idx, j = col, value = NA)
+  }
+  message("Las cuotas <= 1 se anularon (NA); el partido se conserva con esa casa sin dato.")
 }
 
 # 5.3 Duplicados exactos (mismo partido cargado dos veces)
-
 duplicados <- base[duplicated(base[, .(Liga, Temporada, Date_parsed, HomeTeam, AwayTeam)])]
 message(sprintf("Filas duplicadas (mismo partido repetido): %d", nrow(duplicados)))
 
 # 5.4 Filtrar la base a partidos válidos
-
 base_valida <- base[
   !is.na(Date_parsed) &
     FTR == FTR_calculado &
@@ -135,7 +165,6 @@ message(sprintf("Base final tras validación: %d partidos (de %d originales)",
                 nrow(base_valida), nrow(base)))
 
 # 5.5 Detalle de las filas descartadas (para documentar en el informe)
-
 filas_descartadas <- base[
   is.na(Date_parsed) |
     FTR != FTR_calculado |
@@ -155,15 +184,22 @@ if (nrow(filas_descartadas) > 0) {
   message("No hubo filas descartadas.")
 }
 
+# Guardar el detalle de las exclusiones (Entregable 4: exclusiones con su justificación)
+if (nrow(filas_descartadas) > 0) {
+  fwrite(filas_descartadas[, .(Liga, Temporada, Date, HomeTeam, AwayTeam,
+                               FTHG, FTAG, FTR, FTR_calculado, Motivo)],
+         file.path(DIR_OUT, "filas_descartadas.csv"))
+} else {
+  fwrite(data.table(Mensaje = "Sin filas descartadas"),
+         file.path(DIR_OUT, "filas_descartadas.csv"))
+}
+
 # ---- 6. Inventario de cobertura --------------------------------
 # Identificar qué casas de apuestas tienen columna de cuota H/D/A
 # completa (las 3) en cada liga/temporada, y cuántos partidos
 # tienen dato no faltante para cada una.
-
 prefijos_casas <- unique(sub("(H|D|A)$", "", cols_cuotas))
-
 # quitar prefijos que no correspondan a una casa real de 3 columnas
-
 prefijos_casas <- prefijos_casas[
   sapply(prefijos_casas, function(p) all(paste0(p, c("H","D","A")) %in% names(base_valida)))
 ]
@@ -183,7 +219,6 @@ setorder(inventario, Liga, Temporada, -Cobertura_pct)
 # 6.1 Vista resumida: cobertura promedio por operador (across todas
 # las liga-temporada), para identificar rápido cuáles casas tienen
 # datos completos en todo el rango y cuáles solo en parte.
-
 resumen_operadores <- inventario[, .(
   Cobertura_media_pct = round(mean(Cobertura_pct), 1),
   Cobertura_min_pct   = min(Cobertura_pct),
@@ -191,28 +226,28 @@ resumen_operadores <- inventario[, .(
 ), by = Operador]
 setorder(resumen_operadores, -Cobertura_media_pct)
 
-cat("\n---- Resumen de cobertura por operador (promedio en las 16 liga-temporada) ----\n")
+cat(sprintf("\n---- Resumen de cobertura por operador (promedio en las %d liga-temporada) ----\n",
+            length(LIGAS) * length(TEMPORADAS)))
 print(resumen_operadores)
 cat(sprintf("\nOperadores con cobertura completa (100%%) en TODAS las liga-temporada: %d\n",
             sum(resumen_operadores$Cobertura_media_pct == 100 & resumen_operadores$Cobertura_min_pct == 100)))
 cat("(Estos son los operadores más confiables para comparar entre sí en la Fase 4.)\n")
 
 # ---- 7. Guardar salidas -----------------------------------------
-
 fwrite(base_valida, file.path(DIR_OUT, "base_consolidada.csv"))
 fwrite(inventario, file.path(DIR_OUT, "inventario_cobertura.csv"))
 
-message("Listo. Archivos guardados en outputs/:")
+message(sprintf("Listo. Archivos guardados en %s/:", DIR_OUT))
 message(" - base_consolidada.csv")
 message(" - inventario_cobertura.csv")
 
 # ---- 8. Resumen final (para copiar y revisar de un vistazo) -----
-
 mostrar_resumen_fase1 <- function() {
   cat("\n")
   cat("================ RESUMEN FASE 1 ================\n")
-  cat(sprintf("Archivos esperados:              16 (2 ligas x 8 temporadas)\n"))
-  cat(sprintf("Archivos faltantes en data/raw/: %d\n", nrow(descargas_fallidas)))
+  cat(sprintf("Archivos esperados:              %d (%d ligas x %d temporadas)\n",
+              length(LIGAS) * length(TEMPORADAS), length(LIGAS), length(TEMPORADAS)))
+  cat(sprintf("Archivos faltantes en %s/: %d\n", DIR_RAW, nrow(descargas_fallidas)))
   if (nrow(descargas_fallidas) > 0) {
     cat("  -> Faltan:\n")
     for (i in seq_len(nrow(descargas_fallidas))) {
@@ -227,8 +262,10 @@ mostrar_resumen_fase1 <- function() {
   cat(sprintf("Partidos en base final validada:     %d\n", nrow(base_valida)))
   cat(sprintf("Filas descartadas por validación:    %d (detalle arriba, sección 5.5)\n", nrow(filas_descartadas)))
   cat(sprintf("Operadores detectados en inventario: %d\n", length(unique(inventario$Operador))))
-  esperado <- length(LIGAS) * length(TEMPORADAS) * 380
-  cat(sprintf("Partidos esperados (%d ligas x %d temporadas x 380): %d\n",
+  cat(sprintf("Cuotas Pinnacle anuladas por guarda de fecha (partidos): %d\n", n_filas_pinnacle_anuladas))
+  cat(sprintf("Partidos posteriores a la reanudación COVID-19 (marcados): %d\n", n_post_covid))
+  esperado <- sum(PARTIDOS_POR_LIGA_TEMPORADA[LIGAS]) * length(TEMPORADAS)
+  cat(sprintf("Partidos esperados (%d ligas x %d temporadas, según config.R): %d\n",
               length(LIGAS), length(TEMPORADAS), esperado))
   cat("--------------------------------------------------\n")
   n_ok <- nrow(base_valida) == esperado
