@@ -408,6 +408,7 @@ prueba_hosmer_lemeshow <- function(dt_largo, operador, resultado, n_bins = N_BIN
 }
 
 combinaciones_hl <- CJ(Operador = OPERADORES_PRINCIPALES, Resultado = c("H", "D", "A"))  # [FIX] restaurado
+
 tabla_hl <- rbindlist(mapply(
   prueba_hosmer_lemeshow,
   operador = combinaciones_hl$Operador,
@@ -416,8 +417,16 @@ tabla_hl <- rbindlist(mapply(
   SIMPLIFY = FALSE
 ))
 
+# [FIX] Corrección por comparaciones múltiples: 12 pruebas (4 operadores
+# x 3 resultados) evaluadas en conjunto. Se ajusta con Holm, mismo método
+# ya usado en la sección 7 para las comparaciones entre operadores.
+
+tabla_hl[, Valor_p_ajustado_Holm := p.adjust(Valor_p, method = "holm")]
+tabla_hl[, Significativo_Holm_0.05 := Valor_p_ajustado_Holm < 0.05]
+
 message("\n---- Hosmer-Lemeshow separado por resultado (H/D/A), gl = K - 1 ----")
-print(tabla_hl)
+print(tabla_hl[, .(Operador, Resultado, Valor_p, Valor_p_ajustado_Holm,
+                   Significativo_Holm_0.05, Desviacion_media_abs_pp)])
 message("\nRECORDATORIO: un valor_p significativo NO implica que la desviación")
 message("importe en la práctica. Revisa siempre Desviacion_media_abs_pp junto al p-valor.")
 message("RECORDATORIO 2: con 12 pruebas (4 operadores x 3 resultados), considerar")
@@ -493,7 +502,7 @@ mostrar_resumen_fase3 <- function() {
   print(comparaciones_apareadas[, .(Comparacion, Dif_Brier, Mejora_pct, Valor_p_ajustado_Holm, Significativo_Holm_0.05)])
   cat("--------------------------------------------------------------------------\n")
   cat("Hosmer-Lemeshow por resultado (12 pruebas: 4 operadores x H/D/A):\n")
-  print(tabla_hl[, .(Operador, Resultado, Valor_p, Rechaza_calibracion_perfecta_0.05, Desviacion_media_abs_pp)])
+  print(tabla_hl[, .(Operador, Resultado, Valor_p, Valor_p_ajustado_Holm, Significativo_Holm_0.05, Desviacion_media_abs_pp)])
   cat("==========================================================================\n")
 }
 

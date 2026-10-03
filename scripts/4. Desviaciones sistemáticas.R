@@ -21,6 +21,26 @@ source("config.R")
 
 base <- fread(file.path(DIR_OUT, "base_con_probabilidades.csv"), encoding = "UTF-8")
 
+# [FIX] Consistencia de muestra con la Fase 3: ahí se filtró a los partidos
+# donde los 4 operadores principales tienen datos completos ("muestra común
+# apareada"), para que las comparaciones entre operadores fueran válidas.
+# Esta fase reutiliza ese mismo criterio para que el N por operador en
+# favlong/apertura-cierre coincida con el de Brier/HL de la Fase 3 — si no,
+# la comparación entre tablas de distintas fases usa partidos ligeramente
+# distintos por operador, lo cual genera N inconsistentes sin explicación.
+
+cond_comun <- rep(TRUE, nrow(base))
+for (op in OPERADORES_PRINCIPALES) {
+  colH <- paste0("pnorm_mult_", op, "_H")
+  colD <- paste0("pnorm_mult_", op, "_D")
+  colA <- paste0("pnorm_mult_", op, "_A")
+  if (all(c(colH, colD, colA) %in% names(base))) {
+    cond_comun <- cond_comun & (!is.na(base[[colH]]) & !is.na(base[[colD]]) & !is.na(base[[colA]]))
+  }
+}
+base <- base[cond_comun]
+message(sprintf("Muestra común apareada (consistente con Fase 3): %d partidos", nrow(base)))
+
 # ---- 0. Reconstruir formato largo (igual que en la Fase 3) --------
 construir_formato_largo <- function(dt, operador) {
   colH <- paste0("pnorm_mult_", operador, "_H")
@@ -88,6 +108,7 @@ favlong <- rbindlist(lapply(OPERADORES_PRINCIPALES, analizar_favorito_longshot, 
 # significativa es evidencia de sesgo favorito-longshot (los favoritos
 # se subestiman relativamente menos que los longshots, o viceversa
 # según el signo).
+
 contraste_favlong <- rbindlist(lapply(OPERADORES_PRINCIPALES, function(op) {
   sub <- favlong[Operador == op]
   test <- cor.test(sub$Prob_predicha_media, sub$Desviacion_pp, method = "spearman")
@@ -101,6 +122,12 @@ contraste_favlong <- rbindlist(lapply(OPERADORES_PRINCIPALES, function(op) {
     Desv_favoritos_pp = round(mean(sub$Desviacion_pp[sub$bin >= 17]), 2)
   )
 }))
+
+# [FIX] Corrección por comparaciones múltiples: 4 pruebas (una por
+# operador) evaluadas en conjunto.
+
+contraste_favlong[, Valor_p_ajustado_Holm := p.adjust(Valor_p, method = "holm")]
+contraste_favlong[, Significativo_Holm_0.05 := Valor_p_ajustado_Holm < 0.05]
 
 message("---- Sesgo favorito-longshot: correlación entre prob. predicha y desviación ----")
 print(contraste_favlong)
@@ -166,7 +193,7 @@ cat("\n")
 cat("================ RESUMEN FASE 4 ================\n")
 cat("A) Sesgo favorito-longshot:\n")
 print(contraste_favlong)
-sesgo_detectado <- contraste_favlong[Valor_p < 0.05 & Correlacion_spearman > 0]
+sesgo_detectado <- contraste_favlong[Significativo_Holm_0.05 == TRUE & Correlacion_spearman > 0]
 if (nrow(sesgo_detectado) > 0) {
   cat(sprintf("-> Sesgo favorito-longshot detectado (p<0.05, correlación positiva) en: %s\n",
               paste(sesgo_detectado$Operador, collapse = ", ")))
