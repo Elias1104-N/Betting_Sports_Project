@@ -1,12 +1,12 @@
-# ============================================================
+# ==============================================================================
 # Proyecto 2 - ¿Están bien calibradas las casas de apuestas?
 # Script maestro de ejecución reproducible (run_all.R)
-# ============================================================
+# ==============================================================================
 # Orquesta el flujo completo, desde los CSV crudos hasta el reporte
 # de calibración autogenerado. Los scripts viven en scripts/ y se
 # localizan por su NÚMERO de fase (0., 1., ...), de modo que no
 # dependen de tildes ni de la codificación del nombre de archivo.
-# ============================================================
+# ==============================================================================
 
 cat("\n############################################################\n")
 cat("# INICIANDO FLUJO COMPLETO DEL PROYECTO\n")
@@ -15,6 +15,7 @@ cat("############################################################\n\n")
 tiempo_inicio <- Sys.time()
 
 # 1. Ubicarse en la raíz del proyecto si se ejecuta desde una subcarpeta
+
 if (!file.exists("config.R")) {
   if (file.exists("../config.R")) {
     setwd("..")
@@ -27,11 +28,13 @@ if (!file.exists("config.R")) {
 }
 
 # 2. Configuración central (alcance, parámetros, rutas y paquetes)
+
 source("config.R", encoding = "UTF-8")
 
 CARPETA_SCRIPTS <- "scripts"
 
 # 3. Localiza un script de fase por su número y lo ejecuta
+
 ejecutar_fase <- function(numero, nombre_fase) {
   archivo <- list.files(CARPETA_SCRIPTS, pattern = sprintf("^%d\\..*\\.R$", numero),
                         full.names = TRUE)
@@ -70,14 +73,16 @@ if (length(archivos_raw) > 0) {
     "(requiere '%s')."), DIR_RAW, base_consolidada), call. = FALSE)
 }
 
-# ---- FASES 2 a 5 -----------------------------------------------------
+# ---- FASES 2 a 5 -------------------------------------------------------------
+
 ejecutar_fase(2, "Fase 2: Conversión a probabilidades y remoción del margen (Multiplicativo, Aditivo, Shin)")
 ejecutar_fase(3, "Fase 3: Evaluación de calibración, Murphy, RPS y contrastes apareados")
 ejecutar_fase(4, "Fase 4: Sesgo favorito-longshot y Apertura vs. Cierre")
 ejecutar_fase(5, sprintf("Fase 5: Comparación entre ligas (%s)",
                          paste(NOMBRES_LIGA[LIGAS], collapse = " vs. ")))
 
-# ---- FASE 6: Reporte de calibración autogenerado (Entregable 3) ------
+# ---- FASE 6: Reporte de calibración autogenerado (Entregable 3) --------------
+
 cat("\n\n>>> FASE 6: Compilando el reporte de calibración autogenerado...\n\n")
 reporte_rmd <- list.files(CARPETA_SCRIPTS, pattern = "^6\\..*\\.Rmd$", full.names = TRUE)
 if (length(reporte_rmd) == 0) {
@@ -85,6 +90,7 @@ if (length(reporte_rmd) == 0) {
 }
 
 # Pandoc: RStudio lo expone automáticamente. Fuera de RStudio debe estar en el PATH.
+
 if (!rmarkdown::pandoc_available()) {
   stop("Pandoc no está disponible. Ejecuta desde RStudio o instala Pandoc ",
        "(https://pandoc.org/installing.html) y vuelve a correr.", call. = FALSE)
@@ -92,6 +98,7 @@ if (!rmarkdown::pandoc_available()) {
 
 # knit_root_dir fuerza que los chunks corran con el directorio de trabajo en la
 # raíz del proyecto, de modo que source("config.R") funcione dentro del .Rmd.
+
 rmarkdown::render(
   input         = reporte_rmd[1],
   output_dir    = DIR_OUT,
