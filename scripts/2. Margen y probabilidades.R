@@ -82,6 +82,7 @@ for (op in operadores) {
 # Método 1: Normalización multiplicativa (proporcional)
 # Reparte el margen proporcionalmente al tamaño de cada probabilidad.
 # p_norm_i = p_bruta_i / sum(p_bruta)
+
 normalizar_multiplicativo <- function(pH, pD, pA) {
   s <- pH + pD + pA
   list(H = pH / s, D = pD / s, A = pA / s)
@@ -92,6 +93,7 @@ normalizar_multiplicativo <- function(pH, pD, pA) {
 # p_norm_i = p_bruta_i - (sum(p_bruta) - 1) / 3
 # Nota: puede producir probabilidades negativas en mercados muy
 # desbalanceados (se recorta a 0 y se advierte si ocurre).
+
 normalizar_aditivo <- function(pH, pD, pA) {
   exceso <- (pH + pD + pA - 1) / 3
   list(H = pH - exceso, D = pD - exceso, A = pA - exceso)
@@ -102,6 +104,7 @@ normalizar_aditivo <- function(pH, pD, pA) {
 # informados") tal que las probabilidades ajustadas sean consistentes.
 # Referencia: Shin (1993), "Measuring the Incidence of Insider Trading
 # in a Market for State-Contingent Claims".
+
 normalizar_shin <- function(pH, pD, pA) {
   if (is.na(pH) || is.na(pD) || is.na(pA) || (pH <= 0) || (pD <= 0) || (pA <= 0)) {
     return(list(H = NA_real_, D = NA_real_, A = NA_real_, z = NA_real_))
@@ -122,6 +125,7 @@ normalizar_shin <- function(pH, pD, pA) {
 }
 
 # Aplica los métodos a un operador y agrega las columnas resultantes
+
 aplicar_metodos <- function(dt, op) {
   colH <- paste0("pbruta_", op, "_H")
   colD <- paste0("pbruta_", op, "_D")
@@ -155,6 +159,7 @@ for (op in operadores) {
 # para cada partido. Se aplica a todos los OPERADORES_PRINCIPALES
 # (B365, PS, PSC, WH) para permitir el análisis de sensibilidad completo
 # y obtener la bonificación de +3 puntos (Criterio C).
+
 operadores_shin <- intersect(OPERADORES_PRINCIPALES, operadores)
 
 for (op_s in operadores_shin) {
@@ -172,6 +177,7 @@ for (op_s in operadores_shin) {
 }
 
 # ---- 3. Distribución del margen (resultado con valor propio) -----
+
 distribucion_margen <- rbindlist(lapply(operadores, function(op) {
   col_z <- paste0("z_shin_", op)
   tiene_z <- col_z %in% names(base)
@@ -197,6 +203,7 @@ print(distribucion_margen)
 # 1) Multiplicativo vs. Aditivo
 # 2) Multiplicativo vs. Shin (donde esté disponible)
 # 3) Aditivo vs. Shin
+
 sensibilidad <- rbindlist(lapply(operadores, function(op) {
   colmult <- paste0("pnorm_mult_", op, "_H")
   coladit <- paste0("pnorm_adit_", op, "_H")
@@ -239,6 +246,7 @@ message("\n---- Sensibilidad entre métodos de remoción del margen (prob. de H)
 print(sensibilidad)
 
 # ---- 5. Guardar salidas -------------------------------------------
+
 distribucion_margen[, Tipo := fifelse(Operador %in% operadores_agregado,
                                       "Agregado de mercado", "Casa real")]
 sensibilidad[, Tipo := fifelse(Operador %in% operadores_agregado,
@@ -254,6 +262,7 @@ message(" - distribucion_margen.csv")
 message(" - sensibilidad_metodos.csv")
 
 # ---- 6. Resumen final (para copiar y revisar de un vistazo) -----
+
 mostrar_resumen_fase2 <- function() {
   agregado_margen <- distribucion_margen[, .(
     Margen_medio_pct = round(mean(Margen_medio_pct, na.rm = TRUE), 2),

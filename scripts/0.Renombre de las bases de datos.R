@@ -4,12 +4,14 @@
 source("config.R")
 
 # La carpeta de origen y destino es la misma: renombramos in situ.
+
 CARPETA_ORIGEN <- DIR_RAW
 LIGAS_VALIDAS <- LIGAS
 
 # Determina la temporada (formato "1213") a partir de una fecha
 # dd/mm/yyyy o dd/mm/yy. Usa agosto como corte (la temporada
 # europea arranca en agosto).
+
 inferir_temporada <- function(fechas_txt) {
   fechas <- lubridate::dmy(fechas_txt, quiet = TRUE)
   fechas <- fechas[!is.na(fechas)]
@@ -22,6 +24,7 @@ inferir_temporada <- function(fechas_txt) {
 }
 
 # Busca todos los .csv en la carpeta de origen
+
 candidatos <- list.files(CARPETA_ORIGEN, pattern = "\\.csv$",
                          full.names = TRUE, ignore.case = TRUE)
 

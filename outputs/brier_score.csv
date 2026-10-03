@@ -1,5 +1,5 @@
-Operador,N_partidos,Brier_operador,Brier_linea_base_frecuencia,Brier_linea_base_uniforme,Mejora_vs_frecuencia_pct,Mejora_vs_uniforme_pct
-B365,6080,0.5623,0.6403,0.6667,12.2,15.7
-PS,6075,0.5621,0.6404,0.6667,12.2,15.7
-PSC,6079,0.5598,0.6403,0.6667,12.6,16
-WH,6080,0.563,0.6403,0.6667,12.1,15.6
+Operador,Metodo,N_partidos,Brier_operador,Brier_linea_base_frecuencia,Brier_linea_base_uniforme,Mejora_vs_frecuencia_pct,Mejora_vs_uniforme_pct
+B365,mult,6074,0.5626,0.6403,0.6667,12.14,15.61
+PS,mult,6074,0.5621,0.6403,0.6667,12.22,15.68
+PSC,mult,6074,0.5601,0.6403,0.6667,12.53,15.99
+WH,mult,6074,0.5633,0.6403,0.6667,12.04,15.51
