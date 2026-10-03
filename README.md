@@ -39,6 +39,8 @@ Todo el alcance (ligas, temporadas, operadores) y los parámetros metodológicos
 ├── data/
 │   ├── raw/               # CSV originales (NO versionados — ver "Preparar los datos")
 │   └── processed/         # Reservado, actualmente sin uso activo en el flujo
+├── documentos/
+│   └── bitacora_ia.md      # Bitácora de uso de IA (entregable 6)
 ├── outputs/                # Todas las salidas del análisis (NO versionado, se regenera solo)
 ├── logs/                   # (NO versionado)
 ├── .gitattributes          # Fuerza saltos de línea LF en .R, .Rmd y .md

@@ -2,9 +2,9 @@
 
 **Proyecto:** Proyecto 2 — ¿Están bien calibradas las casas de apuestas? Evaluación de pronósticos probabilísticos con datos históricos de cuotas (Premier League y La Liga, 2012/13–2019/20)  
 **Curso:** Estadística Industrial · Ingeniería Industrial · Universidad del Magdalena · 2026-II  
-**Entregable 4:** `bitacora_ia.md` (Carpeta principal del proyecto)  
+**Entregable 6:** `documentos/bitacora_ia.md`  
 **Herramientas utilizadas:** Claude (Anthropic) y Antigravity (Google DeepMind)  
-**Periodo cubierto:** 8 de septiembre – 29 de septiembre de 2026  
+**Periodo cubierto:** 8 de septiembre – 3 de octubre de 2026  
 **Integrantes:** Elías Parra - María Mónica Murillo  
 **Docente:** Enrique J. De La Hoz Domínguez  
 
@@ -12,13 +12,17 @@
 
 ## Nota metodológica
 
-Esta bitácora registra cada interacción relevante con IA durante el desarrollo del pipeline (`config.R`, `scripts/0.Renombre...` a `5. comparación ligas.R`, `run_all.R` y `reporte_calibracion.Rmd`). Se documenta con qué criterio se usó la IA: qué se le preguntó, qué respondió, cómo se verificó esa respuesta contra el dato real o contra la lógica estadística del proyecto, y si se aceptó, se corrigió o se descartó. 
+Esta bitácora registra cada interacción relevante con IA durante el desarrollo del pipeline (`config.R`, `scripts/0.Renombre...` a `scripts/5. comparación ligas.R`, `run_all.R` y `scripts/6. Reporte de Calibración.Rmd`). Se documenta con qué criterio se usó la IA: qué se le preguntó, qué respondió, cómo se verificó esa respuesta contra el dato real o contra la lógica estadística del proyecto, y si se aceptó, se corrigió o se descartó.
 
 Para este proyecto usamos la inteligencia artificial como un asistente de apoyo en programación en R, pero validando siempre lo que nos arrojaba y sugería. La IA suele cometer errores conceptuales graves en estadística (inventa hipótesis, confunde muestras independientes con datos apareados o mete sesgos en las pruebas), así que nos propusimos auditar cada línea de código, cada fórmula y cada interpretación que nos daba.
+
+Las fechas corresponden al momento de la interacción con la IA; parte del código se consolidó después en el repositorio (ver historial de commits).
 
 El equipo es responsable de todo lo entregado — la IA propuso enfoques y código; la verificación, la auditoría matemática y la decisión final fueron del equipo en cada caso.
 
 ---
+
+## Registro de interacciones
 
 ### 1. Martes 8 de septiembre — Planeación general y correspondencia con la rúbrica
 * **Objetivo:** Definir la hoja de ruta metodológica en RStudio para evaluar pronósticos probabilísticos asegurando el cumplimiento de todos los entregables.
@@ -33,7 +37,7 @@ El equipo es responsable de todo lo entregado — la IA propuso enfoques y códi
 * **Objetivo:** Delimitar las temporadas y ligas a evaluar, calculando el tamaño muestral teórico de balance.
 * **Prompt:** “Vamos a trabajar con la Premier League (E0) y La Liga (SP1) desde 2012 hasta 2020. ¿Cuántas temporadas y partidos representan en total para fijarlo en un archivo de configuración central?”
 * **Respuesta obtenida:** Tradujo el rango a 8 temporadas completas (2012/13 a 2019/20) para 2 ligas (16 combinaciones liga-temporada) y estimó un volumen teórico de exactamente 6.080 partidos ($16 \times 380$).
-* **Verificación aplicada:** Confirmamos en el calendario oficial que, a pesar de la suspensión temporal por COVID-19 en 2020, ambas ligas completaron sus 380 partidos a puerta cerrada. Definimos los parámetros centrales en `config.R` y fijamos 6.080 partidos como nuestra meta de balance para la limpieza.
+* **Verificación aplicada:** Confirmamos en el calendario oficial que, a pesar de la suspensión temporal por COVID-19 en 2020, ambas ligas completaron sus 380 partidos; los disputados tras la reanudación se jugaron a puerta cerrada. Definimos los parámetros centrales en `config.R` y fijamos 6.080 partidos como nuestra meta de balance para la limpieza.
 * **Resultado:** Aceptado.
 
 ---
@@ -59,7 +63,7 @@ El equipo es responsable de todo lo entregado — la IA propuso enfoques y códi
 ### 5. Lunes 14 de septiembre — Fase 1: limpieza y validación de 6.080 partidos (1. Limpieza de datos.R)
 * **Objetivo:** Consolidar los 16 torneos verificando marcadores, fechas y cuotas, auditando cualquier descarte.
 * **Prompt:** “Al correr la consolidación de los 16 archivos me salen 6.081 filas y el script descarta 1 fila. Quiero una función de resumen y un CSV que me diga exactamente qué fila se descartó y por qué, para verificar que no estoy botando un partido real.”
-* **Respuesta obtenida:** Creó `mostrar_resumen_fase1()` y la exportación de `filas_descartadas_justificacion.csv` con la columna explicativa `Motivo`.
+* **Respuesta obtenida:** Creó `mostrar_resumen_fase1()` y la exportación de `filas_descartadas.csv` con la columna explicativa `Motivo`.
 * **Verificación aplicada:** Auditamos la fila excluida: era un registro totalmente en blanco de la Premier League 2014/15 sin fecha ni equipos. Al descartarla, la base quedó con exactamente **6.080 partidos limpios**, cuadrando al 100% con el fixture teórico esperado.
 * **Resultado:** Aceptado.
 
@@ -96,7 +100,7 @@ El equipo es responsable de todo lo entregado — la IA propuso enfoques y códi
 * **Objetivo:** Implementar la deducción de probabilidades bajo asimetría de información resolviendo numéricamente la proporción de insiders $z$.
 * **Prompt:** “Necesitamos programar el método de Shin (1993) para calcular z y las probabilidades normalizadas en R. ¿Cómo formulamos la ecuación que resuelve uniroot?”
 * **Respuesta obtenida:** Implementó la búsqueda de raíces sobre $\sum \pi_i(z) - 1 = 0$ con `uniroot()`.
-* **Verificación aplicada:** Advertimos que si `uniroot()` no converge en cuotas extremas, devuelve `NA` y puede propagar valores faltantes. Auditamos la convergencia generando `outputs/shin_no_convergencia.csv`, comprobando que en los 6.074 partidos de la muestra común hubo **0 fallos de convergencia**. Además, $z$ resultó menor en Pinnacle ($z \approx 0.0113$) que en William Hill ($z \approx 0.0290$), coherente con el perfil de bajo margen y altos límites de Pinnacle.
+* **Verificación aplicada:** Advertimos que si `uniroot()` no converge en cuotas extremas, devuelve `NA` y puede propagar valores faltantes. Auditamos la convergencia con el diagnóstico `outputs/shin_no_convergencia.csv` (generado en `3. Evaluación de calibración.R`), comprobando que en los 6.074 partidos de la muestra común hubo **0 fallos de convergencia**. Además, $z$ resultó menor en Pinnacle ($z \approx 0.0113$) que en William Hill ($z \approx 0.0290$), coherente con el perfil de bajo margen y altos límites de Pinnacle.
 * **Resultado:** Aceptado con verificación.
 
 ---
@@ -141,7 +145,7 @@ El equipo es responsable de todo lo entregado — la IA propuso enfoques y códi
 * **Objetivo:** Contrastar formalmente las diferencias de calidad probabilística entre operadores.
 * **Prompt:** “¿Qué prueba estadística usamos para demostrar si Bet365, Pinnacle y William Hill son estadísticamente distintas en Brier Score?”
 * **Respuesta obtenida:** Sugirió inicialmente un ANOVA de una vía o pruebas t para muestras independientes.
-* **Verificación aplicada:** Rechazamos el supuesto de muestras independientes. Las cuotas son medidas repetidas sobre los mismos 6.074 partidos. Exigimos la prueba no paramétrica global de **Friedman** ($\chi^2 = 253.54, p = 8.79 \times 10^{-56}$) y pruebas apareadas post-hoc de **Wilcoxon con corrección de Holm** para comparaciones múltiples, demostrando que Pinnacle supera significativamente a las casas recreacionales.
+* **Verificación aplicada:** Rechazamos el supuesto de muestras independientes. Las cuotas son medidas repetidas sobre los mismos 6.074 partidos. Exigimos la prueba no paramétrica global de **Friedman** ($\chi^2 = 253.54, p = 8.79 \times 10^{-56}$) y pruebas apareadas post-hoc de **Wilcoxon con corrección de Holm** para comparaciones múltiples. Los intervalos bootstrap por bloques de la diferencia media de Brier excluyen el cero para Bet365 frente a Pinnacle ($+0.00050$; IC $[0.00002, 0.00092]$) y para Pinnacle frente a William Hill ($-0.00117$; IC $[-0.00201, -0.00038]$), pero no para Bet365 frente a William Hill (ver entrada 18). Las diferencias son estadísticamente detectables pero pequeñas en magnitud (del orden de $10^{-3}$ en Brier).
 * **Resultado:** Corregido por el equipo.
 
 ---
@@ -150,7 +154,7 @@ El equipo es responsable de todo lo entregado — la IA propuso enfoques y códi
 * **Objetivo:** Evaluar el sesgo favorito-longshot mediante la pendiente de calibración logística $\text{logit}(P) = \alpha + \beta \cdot \text{logit}(p)$.
 * **Prompt:** “Ajusta la regresión logística para estimar la pendiente beta de calibración en Bet365, Pinnacle y William Hill.”
 * **Respuesta obtenida:** Ajustó un modelo `glm()` convencional asumiendo filas independientes.
-* **Verificación aplicada:** Advertimos que como cada partido aporta 3 filas ($H, D, A$), existe correlación intra-partido que subestima el error estándar de $\beta$. Exigimos calcular **errores estándar robustos por clúster de partido**. El error estándar subió de $0.022$ a $0.029$; como consecuencia directa, el sesgo de Bet365 bajo el método multiplicativo pasó de ser falsamente significativo ($p = 0.013$) a no significativo tras Holm ($p = 0.060$).
+* **Verificación aplicada:** Advertimos que como cada partido aporta 3 filas ($H, D, A$), existe correlación intra-partido que subestima el error estándar de $\beta$. Exigimos calcular **errores estándar robustos por clúster de partido** (`sandwich::vcovCL`). Para Bet365 (método multiplicativo, $\beta = 1.055$) el error estándar subió de $0.022$ a $0.029$ y el p-valor sin ajuste pasó de $0.013$ a $0.060$; con la corrección de Holm por comparaciones múltiples el p ajustado es $0.42$. Con el método de Shin la pendiente es $\beta = 1.009$ ($p = 0.758$). En ningún caso el sesgo es significativo tras los ajustes.
 * **Resultado:** Corregido por el equipo.
 
 ---
@@ -159,30 +163,57 @@ El equipo es responsable de todo lo entregado — la IA propuso enfoques y códi
 * **Objetivo:** Explicar por qué la pendiente logística conjunta $\beta$ daba mayor a 1 en el método multiplicativo.
 * **Prompt:** “La pendiente conjunta beta da 1.05 a 1.10. ¿Esto prueba que los apostadores sobreestiman las sorpresas en todos los mercados?”
 * **Respuesta obtenida:** Respondió afirmativamente, atribuyéndolo al sesgo cognitivo tradicional de sobrestimación de probabilidades bajas.
-* **Verificación aplicada:** El equipo sospechó del comportamiento particular del empate ($D$), cuyas probabilidades están comprimidas entre 20% y 35%. Obligamos a la IA a estimar $\beta$ **por separado para $H$, $D$ y $A$**. El hallazgo fue contundente: para $H$ y $A$, $\beta$ se mantuvo entre **$0.99$ y $1.07$** (calibración excelente), mientras que para el empate ($D$) se disparó a **$1.23 - 1.39$**. Demostramos que el sesgo conjunto aparente no proviene de las sorpresas en victorias locales o visitantes, sino del comportamiento matemático del empate.
+* **Verificación aplicada:** El equipo sospechó del comportamiento particular del empate ($D$), cuyas probabilidades están comprimidas entre 20% y 35%. Obligamos a la IA a estimar $\beta$ **por separado para $H$, $D$ y $A$** (`sesgo_favorito_longshot_por_resultado.csv`). El hallazgo fue contundente: para $H$ y $A$, $\beta$ se mantuvo entre **$0.99$ y $1.07$** (calibración excelente), mientras que para el empate ($D$) se disparó a **$1.23 - 1.39$**. Demostramos que el sesgo conjunto aparente no proviene de las sorpresas en victorias locales o visitantes, sino del comportamiento matemático del empate.
 * **Resultado:** Descartado y reformulado por el equipo.
 
 ---
 
-### 17. Lunes 28 de septiembre — Fase 3 y 4: refutación empírica de ventaja local en COVID y remoción aleatoria
+### 17. Lunes 28 de septiembre — Fase 3 y 4: ventaja local en COVID y remoción aleatoria
 * **Objetivo:** Evaluar la sensibilidad del modelo al excluir los 200 partidos post-reanudación por COVID-19 en 2020.
-* **Prompt:** “Al quitar los 200 partidos de COVID, William Hill en victoria local (WH-H) deja de rechazar Hosmer-Lemeshow. ¿A qué se debe este cambio?”
-* **Respuesta obtenida (Hipótesis inventada por la IA):** Argumentó que la falta de público había alterado estructuralmente la ventaja de local, descalibrando las cuotas de William Hill durante la pandemia.
-* **Verificación aplicada:** Auditamos las cuotas de esos 200 partidos a puerta cerrada y **desmentimos a la IA con los datos reales**: la victoria local observada fue del **$43.5\%$**, mientras que las casas pronosticaban entre **$41.8\%$ y $42.3\%$** (los locales ganaron más de lo predicho, desviación positiva $+1.2$ a $+1.6$ pp). La IA tuvo que **retirar su hipótesis textual en el chat**. Diseñamos además un experimento de control retirando 200 partidos al azar en 200 réplicas (`remocion_aleatoria_hl.csv`), confirmando que en el 47% de las veces el rechazo también desaparecía por simple inestabilidad muestral del chi-cuadrado.
-* **Resultado:** Refutado y corregido por el equipo.
+* **Prompt:** “Al quitar los partidos de COVID, William Hill en victoria local (WH-H) deja de rechazar Hosmer-Lemeshow. ¿A qué se debe este cambio?”
+* **Respuesta obtenida (hipótesis sin respaldo):** Argumentó que la falta de público había alterado estructuralmente la ventaja de local, descalibrando las cuotas de William Hill durante la pandemia.
+* **Verificación aplicada:** Revisamos esos 200 partidos (`ventaja_local_covid.csv`): la victoria local observada fue de $43.5\%$ y las casas pronosticaban entre $41.8\%$ y $42.3\%$ (desviación de $+1.2$ a $+1.7$ pp). Con tan pocos partidos el error estándar de una proporción ronda los $3.5$ pp, así que esa diferencia no es distinguible de cero: **los datos no respaldan la hipótesis de la IA**, pero tampoco permiten afirmar lo contrario. Para contexto, en el resto de la muestra común la desviación también es positiva ($+0.75$ pp para Bet365, método multiplicativo), por lo que la ventaja local ligeramente subestimada no es exclusiva del periodo COVID. Diseñamos además un control retirando 200 partidos al azar en 200 réplicas (`remocion_aleatoria_hl.csv`). Para William Hill en victoria local (método multiplicativo), el rechazo de Hosmer-Lemeshow con Holm desaparece en el 47% de las remociones aleatorias ($36.5\%$ con Shin), así que perderlo al quitar los partidos de COVID no es inusual. El p-valor tras quitar COVID ($0.0091$) cae dentro del rango p5–p95 de las remociones aleatorias ($0.0016$ a $0.0114$); solo el $11.5\%$ de ellas produce un p igual o mayor, una señal débil de que esos partidos pesan algo más que una muestra al azar. En las pruebas de empate el efecto es indistinguible del azar. En conjunto, el cambio de decisión se explica sobre todo por la inestabilidad muestral del chi-cuadrado, no por un efecto COVID demostrado.
+* **Resultado:** Hipótesis de la IA descartada por falta de evidencia; conclusión reformulada por el equipo.
 
 ---
 
-### 18. Martes 29 de septiembre — Fase 6 y orquestador: discrepancia Wilcoxon vs. Bootstrap y robustez en Windows (run_all.R)
-* **Objetivo:** Verificar los contrastes apareados en el reporte HTML y resolver los fallos de consola y tildes en Windows.
-* **Prompt:** “En el borrador del reporte dice que todas las casas son significativamente distintas entre sí. Además, en RStudio la consola se corta en la Fase 2 y en Windows fallan los scripts con tildes.”
-* **Respuesta obtenida:** Afirmó que las diferencias eran significativas por el p-valor de Wilcoxon; explicó que la consola de RStudio tiene un búfer de 1.000 líneas y recomendó estandarizar nombres de archivo.
-* **Verificación aplicada:** Al auditar la tabla, descubrimos que el **Intervalo Bootstrap por Bloques (liga-temporada-mes)** para la diferencia media de Brier entre Bet365 y William Hill es **$[-0.00138, +0.00003]$**, el cual **incluye el cero**. Corregimos el texto del `.Rmd`: aunque Wilcoxon rechaza igualdad de pseudomedianas, en media la diferencia no es concluyente. En `run_all.R` implementamos captura completa en `outputs/log_ejecucion.txt` y búsqueda de scripts por expresiones regulares (`ejecutar_script("3.*calibraci")`) con `encoding = "UTF-8"`. El pipeline corrió de corrido en **7.88 minutos** sin errores.
+### 18. Martes 29 de septiembre — Fase 6 y orquestador: discrepancia Wilcoxon vs. Bootstrap (run_all.R)
+* **Objetivo:** Verificar los contrastes apareados del reporte HTML y dejar el orquestador robusto ante tildes en los nombres de archivo.
+* **Prompt:** “En el borrador del reporte dice que todas las casas son significativamente distintas entre sí. Además, en Windows fallan los scripts con tildes.”
+* **Respuesta obtenida:** Afirmó que las diferencias eran significativas por el p-valor de Wilcoxon y recomendó estandarizar nombres de archivo.
+* **Verificación aplicada:** Al auditar la tabla, el **intervalo bootstrap por bloques (liga-temporada-mes)** para la diferencia media de Brier entre Bet365 y William Hill es $[-0.00138, +0.00003]$, que **incluye el cero**, mientras que los de Bet365 vs. Pinnacle y Pinnacle vs. William Hill lo excluyen. Corregimos el texto del `.Rmd`: aunque Wilcoxon rechaza la igualdad de pseudomedianas en las tres comparaciones, en media la diferencia entre Bet365 y William Hill no es concluyente. Para las tildes, `run_all.R` localiza cada script por su número de fase (patrón `^N\..*\.R$` dentro de `scripts/`) y ejecuta con `encoding = "UTF-8"`. El flujo completo corrió en 3.01 minutos sin errores.
 * **Resultado:** Corregido y validado por el equipo.
 
 ---
 
-## Resumen de Interacciones
+### 19. Sábado 3 de octubre — Comparación de los dos repositorios del proyecto
+* **Objetivo:** Identificar diferencias metodológicas y de empaquetado entre el repositorio de Elías y el de María Mónica, y decidir cuál usar como base.
+* **Prompt:** “Compara los dos repositorios con el fin de ver qué diferencias tienen y si son significativas y correctas.”
+* **Respuesta obtenida:** Revisión estática del código de ambos. Concluyó que el segundo repositorio es metodológicamente más completo (guarda de Pinnacle, bootstrap por partido y por bloques, anulación de probabilidades aditivas negativas, sensibilidad COVID) y que el primero tiene mejor estructura de reproducibilidad (`renv`, `.Rproj`, `scripts/`). La IA no ejecutó R, así que no produjo resultados numéricos.
+* **Verificación aplicada:** Se encontro diferencias en los scripts de configuraciones y el run all, se hicieron modicaciones con el fin de adaptar los parametros sin necesidad de alterar los scripts del 0 al 5.
+* **Resultado:** Aceptado con modificaciones.
+
+---
+
+### 20. Sábado 3 de octubre — Integración del análisis en la estructura del Repo 1 (config.R, run_all.R, scripts/)
+* **Objetivo:** Llevar el análisis extendido a la estructura del Repo 1 y eliminar dependencias de Windows.
+* **Prompt:** “Dame el código de los scripts que necesitan cambio para llevar el análisis a la estructura del Repo 1.”
+* **Respuesta obtenida:** `config.R` sin la ruta de librería de Windows; `run_all.R` reescrito (fases localizadas por número, sin la ruta de Pandoc de Windows, reporte renderizado desde `scripts/` con `knit_root_dir`); scripts 0 a 5 y el `.Rmd` copiados con los nombres del Repo 1 y saltos de línea LF.
+* **Verificación aplicada:** Verificado con `list.files("outputs")`
+* **Resultado:** Se ejecuto el archivo maestro run all completo y este no presento errores, se hizo en un tiempo total de flujo de 3.01 minutos exportando cada uno de los archivos en outputs. `renv.lock` se actualizó después con `sandwich`, `scales` y `rmarkdown`..
+
+---
+
+### 21. Sábado 3 de octubre — README y manejo de `outputs/` en git
+* **Objetivo:** Actualizar el README con el análisis extendido y dejar de versionar `outputs/`.
+* **Prompt:** “Dame el código completo del README respetando la estructura del Repo 1” y “ayúdame a solucionar el problema del versionamiento de outputs.”
+* **Respuesta obtenida:** Texto completo del README y los pasos para sacar `outputs/` del seguimiento de git. Al no reconocerse `git` en la terminal de RStudio, se resolvió quitando y devolviendo la carpeta desde el explorador y confirmando el commit en GitHub Desktop.
+* **Verificación aplicada:** GitHub Desktop no muestra cambios en `outputs/` tras volver a copiarla, y que el README describe lo que el código hace. La IA advirtió que quitar los archivos no reduce el historial de git.
+* **Resultado:** Aceptado con modificaciones.
+
+---
+
+## Resumen de interacciones
 
 | # | Fecha | Etapa / Script | Tipo de Intervención | Resultado |
 | :-: | :---: | :--- | :--- | :--- |
@@ -202,21 +233,22 @@ El equipo es responsable de todo lo entregado — la IA propuso enfoques y códi
 | **14**| 25 sep | `3. Calibración...`| Inferencia apareada: Friedman y Wilcoxon con Holm | Corregido por el equipo |
 | **15**| 26 sep | `4. Desviaciones...`| Errores estándar por clúster en pendiente logística | Corregido por el equipo |
 | **16**| 27 sep | `4. Desviaciones...`| Desagregación de $\beta$ y artefacto del empate | Descartado y reformulado |
-| **17**| 28 sep | `3. Calibración...`| Refutación de la hipótesis de ventaja local en COVID | Refutado por el equipo |
-| **18**| 29 sep | `run_all.R` | Bootstrap por bloques, log persistente y carga en Windows | Corregido y validado |
+| **17**| 28 sep | `3. Calibración...`| Hipótesis de ventaja local en COVID sin respaldo en los datos | Descartado; conclusión reformulada |
+| **18**| 29 sep | `run_all.R` | Discrepancia Wilcoxon vs. bootstrap y búsqueda de scripts por fase | Corregido y validado |
+| **19**| 03 oct | Repositorios | Comparación de los dos repositorios del proyecto | Aceptado con modificaciones |
+| **20**| 03 oct | `config.R`, `run_all.R`, `scripts/` | Integración del análisis en la estructura del Repo 1 | Aceptado con modificaciones |
+| **21**| 03 oct | `README.md`, `.gitignore` | README actualizado y salida de `outputs/` del control de versiones | Aceptado con modificaciones |
 
 ---
 
-## 3. Conclusión luego de utilizar la IA
+## Conclusión
 
-Para este proyecto usamos la inteligencia artificial como un asistente de apoyo en programación en R, pero validando siempre lo que nos arrojaba y sugería. La IA suele cometer errores conceptuales graves en estadística (inventa hipótesis, confunde muestras independientes con datos apareados o mete sesgos en las pruebas), así que nos propusimos auditar cada línea de código, cada fórmula y cada interpretación que nos daba.
+En esta bitácora dejamos el registro real de las consultas más importantes que hicimos, lo que la IA nos propuso, las limitaciones que le encontramos, y cómo nosotros mismos tuvimos que corregirla y guiarla para que el análisis fuera metodológicamente sólido y cumpliera con la rúbrica.
 
-En esta bitácora dejamos el registro real de las consultas más importantes que hicimos, lo que la IA nos propuso, las metidas de pata o limitaciones que le encontramos, y cómo nosotros mismos tuvimos que corregirla y guiarla para que el análisis fuera metodológicamente impecable y cumpliera con toda la rúbrica.
-
-Trabajar con la IA en este proyecto fue muy útil para acelerar la escritura de código en R y estructurar visualmente las tablas, pero pudimos evidenciar que habían algunos errores técnicos que pasaba por alto y muchas veces decía que algo estaba bien y, después de volver a preguntar, revisaba más a detalle lo solicitado y comentaba errores que antes no reportaba. En varias ocasiones la IA:
+Trabajar con la IA en este proyecto fue muy útil para acelerar la escritura de código en R, estructurar las tablas y, hacia el final, revisar y consolidar los dos repositorios del equipo. Pero evidenciamos que pasaba por alto algunos errores técnicos y, muchas veces, decía que algo estaba bien y, después de volver a preguntar, revisaba más a detalle lo solicitado y comentaba errores que antes no reportaba. En varias ocasiones la IA:
 * Sugirió métodos matemáticamente inválidos (truncar probabilidades a 0 rompiendo la suma a 1).
 * Cometió violaciones de independencia estadística (juntar $H, D, A$ en Hosmer-Lemeshow).
 * Se inventó narrativas sin base en los datos (la teoría de la ventaja de local en COVID).
 * Exageró conclusiones estadísticas basándose únicamente en p-valores sin mirar los intervalos bootstrap ni la relevancia práctica.
 
-Cada tabla, gráfica y número que aparece en el informe final fue revisado, cuestionado y validado directamente por nosotros en RStudio.
+Cada tabla, gráfica y número que aparece en el informe final fue revisado, cuestionado y validado directamente por nosotros en RStudio. El equipo es responsable de todo lo entregado.
