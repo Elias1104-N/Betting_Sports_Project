@@ -8,17 +8,6 @@
 #
 # Requiere haber corrido antes las Fases 1-2 (necesita
 # base_con_probabilidades.csv y distribucion_margen.csv en DIR_OUT).
-#
-# Preguntas que responde:
-#   A) ¿El margen (overround) es distinto entre ligas?
-#   B) ¿La calibración es distinta entre ligas? Se usa la MUESTRA COMÚN de la
-#      Fase 3 (los mismos partidos para todas las casas). Como el Brier depende
-#      también de la dificultad intrínseca de cada liga, se reportan además la
-#      fiabilidad de Murphy y la desviación ponderada por liga, que miden
-#      descalibración y no dificultad.
-#      Los partidos de una liga y otra son eventos distintos: muestras
-#      independientes (Mann-Whitney), a diferencia de apertura/cierre (apareada).
-# ============================================================
 
 source("config.R")
 set.seed(SEMILLA)

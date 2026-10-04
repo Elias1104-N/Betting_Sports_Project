@@ -1,21 +1,4 @@
-# ============================================================
-# Proyecto 2 - ¿Están bien calibradas las casas de apuestas?
 # Fase 4: Análisis de desviaciones sistemáticas
-# ============================================================
-# Parte de base_con_probabilidades.csv (Fase 2) sobre la muestra común.
-# Investiga:
-#   A) Sesgo favorito-longshot:
-#      - Análisis por bins (desviación observada vs. predicha), con medias
-#        simples y PONDERADAS por N en los extremos
-#      - Spearman sobre bins con N >= N_MIN_BIN (los bins casi vacíos no cuentan)
-#      - Pendiente de calibración logística con error estándar ROBUSTO por
-#        clúster de partido (cada partido aporta 3 filas dependientes: H, D, A)
-#      - Pendiente por resultado (H, D, A) separado
-#      - SENSIBILIDAD METODOLÓGICA: ¿atenúa o elimina el método de Shin el sesgo?
-#   B) Apertura vs. Cierre (par definido en config.R) - BONIFICABLE:
-#      - Comparación apareada (Wilcoxon) + IC bootstrap por bloques de la
-#        diferencia media de Brier y de RPS
-# ============================================================
 
 source("config.R")
 set.seed(SEMILLA)

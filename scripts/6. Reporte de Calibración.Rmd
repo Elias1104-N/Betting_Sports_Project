@@ -64,6 +64,9 @@ calib_liga      <- fread(file.path(DIR_OUT, "calibracion_por_liga.csv"))
 contraste_ligas <- fread(file.path(DIR_OUT, "contraste_ligas.csv"))
 
 n_comun <- brier_df$N_partidos[1]
+# Fiabilidad de Murphy relativa al Brier, por liga (el máximo de la muestra común no cubre estos casos)
+rel_liga <- merge(calib_liga, brier_liga[, .(Liga, Operador, Brier_operador)], by = c("Liga", "Operador"))
+rel_liga_pct <- 100 * rel_liga$Fiabilidad_Murphy / rel_liga$Brier_operador
 casas   <- strsplit(fried$Operadores, "/")[[1]]
 op_ap   <- PAR_APERTURA_CIERRE[["apertura"]]
 op_ci   <- PAR_APERTURA_CIERRE[["cierre"]]
@@ -296,7 +299,7 @@ kable(murphy_df[, .(Operador, Metodo, Fiabilidad_Reliability, Resolucion_Resolut
                     Brier_calculado, Brier_real, Termino_intrabin)],
       col.names = c("Operador", "Método", "Fiabilidad (Error Calibración)", "Resolución (Discriminación)",
                     "Incertidumbre (Intrínseca)", "Brier por descomposición", "Brier real", "Término intra-intervalo"),
-      caption = sprintf("Descomposición de Murphy multiclase: la fiabilidad representa como máximo el %s%% del error total", fmt(max(rel_pct), 2)))
+      caption = sprintf("Descomposición de Murphy multiclase: la fiabilidad representa como máximo el %s%% del error total en la muestra común (por liga, hasta %s%%)", fmt(max(rel_pct), 2), fmt(max(rel_liga_pct), 2)))
 ```
 
 > **Nota sobre el término intra-intervalo**: la identidad Brier = Fiabilidad − Resolución + Incertidumbre es exacta solo si todas las predicciones de un intervalo son iguales. Con intervalos de ancho fijo queda un término adicional (entre $`r fmt(min(murphy_df$Termino_intrabin), 4)`$ y $`r fmt(max(murphy_df$Termino_intrabin), 4)`$) que explica la diferencia entre el Brier de la descomposición y el Brier real. Ese término es del mismo orden que las diferencias de Brier entre casas ($`r fmt(min(abs(comp_apar$Dif_Brier)), 4)`$ a $`r fmt(max(abs(comp_apar$Dif_Brier)), 4)`$), por lo que **las casas se comparan con el Brier real** y la descomposición se usa para examinar la fiabilidad (descalibración).
@@ -317,7 +320,7 @@ kable(rps_df[, .(Operador, RPS_operador, RPS_linea_base_frecuencia, RPS_linea_ba
 
 # Inferencia para Datos Apareados entre Casas de Apuestas
 
-Todas las casas cotizan sobre los **mismos `r format(n_comun, big.mark = ",")` partidos**, por lo que los supuestos de independencia entre muestras no se sostienen. Se comparan las casas **`r paste(casas, collapse = ", ")`**. Las cuotas de cierre (`r op_ci`) no entran en esta comparación: `r op_ap` y `r op_ci` son la misma casa en dos momentos distintos, y compararlas con las demás mezclaría la calidad del operador con el momento de la cuota (esa comparación se hace en la sección de apertura vs. cierre). Se aplicó:
+Todas las casas cotizan sobre los **mismos `r format(n_comun, big.mark = ",")` partidos**, por lo que los supuestos de independencia entre muestras no se sostienen. Se comparan las casas **`r paste(casas, collapse = ", ")`**. Las cuotas de cierre (`r op_ci`) no entran en esta comparación: `r op_ap` y `r op_ci` son la misma casa en dos momentos distintos, y compararlas con las demás mezclaría la calidad del operador con el momento de la cuota (esa comparación se hace en la sección de cuotas previas al cierre vs. cierre). Se aplicó:
 
 1. **Prueba global de Friedman** para medidas repetidas.
 2. **Pruebas de rangos con signo de Wilcoxon apareadas post-hoc** con ajuste de **Holm** para comparaciones múltiples.
@@ -328,8 +331,8 @@ La prueba global de Friedman `r if (fried$Valor_p < 0.05) "rechaza" else "no rec
 ```{r inferencia-apareada}
 kable(comp_apar[, .(Comparacion, Brier_Op1, Brier_Op2, Dif_Brier,
                     IC_boot_Dif_inferior, IC_boot_Dif_superior, Mejora_pct,
-                    Valor_p_crudo = signif(Valor_p_crudo, 4),
-                    Valor_p_ajustado_Holm = signif(Valor_p_ajustado_Holm, 4),
+                    Valor_p_crudo = formatC(Valor_p_crudo, format = "e", digits = 1),
+                    Valor_p_ajustado_Holm = formatC(Valor_p_ajustado_Holm, format = "e", digits = 1),
                     Significativo_Holm_0.05)],
       col.names = c("Contraste Pareado", "Brier Op1", "Brier Op2", "Diferencia Brier",
                     "IC boot inf.", "IC boot sup.", "Mejora (%)", "p-valor Crudo",
@@ -413,25 +416,25 @@ lineas <- c(
 cat(paste(lineas, collapse = "\n"), "\n")
 ```
 
-### B. Apertura vs. Cierre (`r op_ap` vs. `r op_ci` - Bonificación +1 pt)
+### B. Cuotas previas al cierre vs. cierre (`r op_ap` vs. `r op_ci` - Bonificación +1 pt)
 ```{r apertura-cierre}
 kable(ap_vs_ci[, .(Metrica, Media_Apertura, Media_Cierre, Diferencia,
                    IC_boot_Dif_inferior, IC_boot_Dif_superior, Mejora_cierre_pct, Wilcoxon_V, Valor_p)],
-      col.names = c("Métrica Evaluada", paste0("Apertura (", op_ap, ")"), paste0("Cierre (", op_ci, ")"),
-                    "Diferencia (cierre − apertura)", "IC boot inf.", "IC boot sup.",
+      col.names = c("Métrica Evaluada", paste0("Previas al cierre (", op_ap, ")"), paste0("Cierre (", op_ci, ")"),
+                    "Diferencia (cierre − previas al cierre)", "IC boot inf.", "IC boot sup.",
                     "Mejora Cierre (%)", "Estadístico V", "p-valor (Wilcoxon Apareado)"),
-      caption = "Eficiencia informacional: comparación apareada de apertura vs. cierre en Pinnacle")
+      caption = "Comparación apareada de cuotas previas al cierre vs. cierre en Pinnacle (no es una prueba de eficiencia informativa)")
 ```
 
 ```{r lectura-apertura-cierre, include=FALSE}
 ac_b <- ap_vs_ci[Metrica == "Brier Score"]
 ac_r <- ap_vs_ci[grepl("RPS", Metrica)]
 txt_ac <- if (ac_b$Valor_p < 0.05 && ac_r$Valor_p < 0.05 && ac_b$Diferencia < 0) {
-  "El mercado de cierre es estadísticamente superior a la apertura"
+  "Las cuotas de cierre son estadísticamente mejores que las previas al cierre"
 } else if (ac_b$Valor_p < 0.05 || ac_r$Valor_p < 0.05) {
-  "El mercado de cierre difiere de la apertura en al menos una de las dos métricas"
+  "Las cuotas de cierre difieren de las previas al cierre en al menos una de las dos métricas"
 } else {
-  "No se detecta diferencia entre apertura y cierre"
+  "No se detecta diferencia entre las cuotas previas al cierre y las de cierre"
 }
 ```
 
@@ -459,11 +462,20 @@ rango_op <- sc[, .(sim_min = min(Desviacion_media_abs_pp), sim_max = max(Desviac
                           pon_min = min(Desviacion_pond_pp), pon_max = max(Desviacion_pond_pp)), by = Operador]
 rango_op[, amp := sim_max - sim_min]
 op_amp <- rango_op[which.max(amp)]
+# Separación entre cada par de casas, método por método, frente a lo que varía el Brier de una casa entre métodos
+var_brier_r <- round(var_brier, 4)
+sep_pares <- rbindlist(lapply(combn(sort(casas), 2, simplify = FALSE), function(p) {
+  d <- sc[Operador %in% p, .(dif = abs(Brier[Operador == p[1]] - Brier[Operador == p[2]])), by = Metodo]
+  data.table(par = paste(p, collapse = " vs "), dif_min = min(d$dif), dif_max = max(d$dif))
+}))
+sep_pares[, supera := round(dif_min, 4) > var_brier_r]
+pares_firmes    <- sep_pares[supera == TRUE, par]
+pares_no_firmes <- sep_pares[supera == FALSE, par]
 rech_met <- hl[, .(h = sum(Rechaza_Holm_0.05)), by = Metodo]
 rech_met <- rech_met[match(c("mult", "adit", "shin"), Metodo)]
 ```
 
-> **Qué cambia y qué no con el método**: `r if (mismo_orden) paste0("el orden de las casas por Brier es el mismo con los tres métodos (", orden_met$orden[1], ")") else paste0("el orden de las casas por Brier cambia con el método (", paste(orden_met$Metodo, ":", orden_met$orden, collapse = "; "), ")")`, y el Brier de una casa varía como máximo `r fmt(var_brier, 4)` entre métodos, frente a una separación entre casas de al menos `r fmt(sep_brier, 4)`. En cambio, la desviación media de calibración sí depende del método: en `r op_amp$Operador` pasa de `r fmt(op_amp$sim_min, 2)` a `r fmt(op_amp$sim_max, 2)` pp (versión simple) y de `r fmt(op_amp$pon_min, 2)` a `r fmt(op_amp$pon_max, 2)` pp (ponderada por N), y los rechazos de Hosmer-Lemeshow tras Holm son `r paste(rech_met$h, collapse = ", ")` con el método multiplicativo, aditivo y Shin respectivamente. Las conclusiones sobre *qué casa predice mejor* son `r if (mismo_orden) "robustas" else "sensibles"` al método; las conclusiones sobre *cuánto se desvía* una casa dependen de él.
+> **Qué cambia y qué no con el método**: `r if (mismo_orden) paste0("el orden de las casas por Brier es el mismo con los tres métodos (", orden_met$orden[1], ")") else paste0("el orden de las casas por Brier cambia con el método (", paste(orden_met$Metodo, ":", orden_met$orden, collapse = "; "), ")")`, y el Brier de una casa varía como máximo `r fmt(var_brier, 4)` entre métodos. `r if (length(pares_no_firmes) == 0) "Todas las separaciones entre pares de casas superan esa variación." else paste0("La separación entre casas supera esa variación solo en ", unir(pares_firmes), " (diferencia mínima entre métodos: ", paste(fmt(sep_pares[supera == TRUE, dif_min], 4), collapse = ", "), "); en ", unir(pares_no_firmes), " es del mismo orden o menor.")` En cambio, la desviación media de calibración sí depende del método: en `r op_amp$Operador` pasa de `r fmt(op_amp$sim_min, 2)` a `r fmt(op_amp$sim_max, 2)` pp (versión simple) y de `r fmt(op_amp$pon_min, 2)` a `r fmt(op_amp$pon_max, 2)` pp (ponderada por N), y los rechazos de Hosmer-Lemeshow tras Holm son `r paste(rech_met$h, collapse = ", ")` con el método multiplicativo, aditivo y Shin respectivamente. Las conclusiones sobre *qué casa predice mejor* son `r if (mismo_orden && length(pares_no_firmes) == 0) "robustas" else if (mismo_orden) "solo parcialmente robustas (el orden se mantiene, pero no todas las separaciones superan la variación por método)" else "sensibles"` al método; las conclusiones sobre *cuánto se desvía* una casa dependen de él.
 
 ---
 
@@ -524,8 +536,9 @@ if (nrow(vl) > 0 && length(unique(vl$Grupo)) == 2) {
     else "No hay evidencia de que las casas sobrestimaran la victoria local en los partidos a puerta cerrada (la desviación no es negativa en todas las casas). ",
     if (any(vp$Valor_p < 0.05)) "Alguna desviación es estadísticamente distinta de cero. "
     else "Ninguna desviación es estadísticamente distinta de cero (con tan pocos partidos el contraste tiene poco poder). ",
-    sprintf("Fuera de esos partidos, la mayor desviación en victoria local es la de %s (%s pp, p = %s).",
-            vmax$Operador, fmt(vmax$Desviacion_pp, 2), fp(vmax$Valor_p)))
+    sprintf("Fuera de esos partidos, la mayor desviación en victoria local es la de %s (%s pp, p = %s, sin ajustar)%s",
+            vmax$Operador, fmt(vmax$Desviacion_pp, 2), fp(vmax$Valor_p),
+            if (vmax$Valor_p < 0.05) ", lo que indica que esa desviación no es exclusiva de los partidos a puerta cerrada." else "."))
 }
 
 txt_rem <- ""
@@ -591,7 +604,7 @@ kable(contraste_ligas[, .(Operador, Brier_medio_Liga_1, Brier_medio_Liga_2, Dif_
                           IC_boot_Dif_inferior, IC_boot_Dif_superior, Valor_p, Valor_p_Holm)],
       col.names = c("Operador", paste0("Brier medio ", NOMBRES_LIGA[LIGAS[1]]), paste0("Brier medio ", NOMBRES_LIGA[LIGAS[2]]),
                     "Diferencia (L2 − L1)", "IC boot inf.", "IC boot sup.", "p-valor (Mann-Whitney)", "p (Holm)"),
-      caption = "Calibración (Brier) por liga: contraste para muestras independientes sobre la muestra común")
+      caption = "Brier por liga (exactitud global): contraste para muestras independientes sobre la muestra común")
 
 kable(calib_liga,
       col.names = c("Liga", "Operador", "N partidos", "Fiabilidad Murphy", "Desviación ponderada (pp)"),
@@ -604,7 +617,7 @@ min_p_liga <- min(contraste_ligas$Valor_p_Holm, na.rm = TRUE)
 ic_lig <- c(min(contraste_ligas$IC_boot_Dif_inferior, na.rm = TRUE), max(contraste_ligas$IC_boot_Dif_superior, na.rm = TRUE))
 ```
 
-El margen cobrado depende de la casa y de la liga: la mayor diferencia entre ligas es la de `r dif_mar$Operador` (`r fmt(abs(dif_mar$Diferencia_pp), 2)` pp), mientras que en el resto de operadores va de `r rg(abs(margen_ancho[Operador != dif_mar$Operador, Diferencia_pp]))` pp. Un promedio entre casas oculta esas diferencias. En calibración, `r if (min_p_liga < 0.05) "se detecta diferencia entre ligas en al menos una casa" else "no se detecta diferencia entre ligas para ninguna casa"` (menor $p_{Holm} = `r fp(min_p_liga)`$; los IC de la diferencia de Brier van de `r fmt(ic_lig[1], 4)` a `r fmt(ic_lig[2], 4)`), `r if (min_p_liga >= 0.05) "aunque eso es ausencia de evidencia y no demuestra que las ligas sean iguales: el IC acota qué tan grande podría ser la diferencia" else "con una magnitud que debe leerse junto al IC"`. Como el Brier también depende de la dificultad intrínseca de cada liga, se reportan además la fiabilidad y la desviación ponderada por liga. Este análisis usa la **muestra común** (los mismos partidos para todas las casas).
+El margen cobrado depende de la casa y de la liga: la mayor diferencia entre ligas es la de `r dif_mar$Operador` (`r fmt(abs(dif_mar$Diferencia_pp), 2)` pp), mientras que en el resto de operadores va de `r rg(abs(margen_ancho[Operador != dif_mar$Operador, Diferencia_pp]))` pp. Un promedio entre casas oculta esas diferencias. En Brier, `r if (min_p_liga < 0.05) "se detecta diferencia entre ligas en al menos una casa" else "no se detecta diferencia entre ligas para ninguna casa"` (menor $p_{Holm} = `r fp(min_p_liga)`$; los IC de la diferencia de Brier van de `r fmt(ic_lig[1], 4)` a `r fmt(ic_lig[2], 4)`), `r if (min_p_liga >= 0.05) "aunque eso es ausencia de evidencia y no demuestra que las ligas sean iguales: el IC acota qué tan grande podría ser la diferencia" else "con una magnitud que debe leerse junto al IC"`. Como el Brier mide exactitud global y también depende de la dificultad intrínseca de cada liga, se reportan además la fiabilidad y la desviación ponderada por liga: la fiabilidad va de `r rg(calib_liga[Liga == LIGAS[1], Fiabilidad_Murphy], 5)` en `r NOMBRES_LIGA[LIGAS[1]]` a `r rg(calib_liga[Liga == LIGAS[2], Fiabilidad_Murphy], 5)` en `r NOMBRES_LIGA[LIGAS[2]]`, y la desviación ponderada de `r rg(calib_liga[Liga == LIGAS[1], Desviacion_pond_pp])` pp a `r rg(calib_liga[Liga == LIGAS[2], Desviacion_pond_pp])` pp, respectivamente. Estas diferencias no se contrastaron formalmente y, con la mitad de los partidos por liga, la fiabilidad estimada puede ser mayor por el menor tamaño muestral; por eso no se interpretan como diferencia de calibración entre ligas. Este análisis usa la **muestra común** (los mismos partidos para todas las casas); el margen por liga usa todos los partidos con cuota disponible de cada operador.
 
 ---
 
@@ -637,13 +650,13 @@ desv_sim_rango <- rg(sens_conc$Desviacion_media_abs_pp, 1)
 margen_op <- resumen_margen[order(Margen_Medio_pct)]
 ```
 
-Las cuotas de las casas analizadas están **bien calibradas en términos prácticos**: el error atribuible a descalibración (fiabilidad de Murphy) no supera `r fmt(rel_max, 4)` (como máximo `r fmt(max(rel_pct), 2)`% del Brier), y las desviaciones medias van de `r rg(sens_conc$Desviacion_pond_pp, 1)` pp (ponderadas por N) o de `r rg(sens_conc$Desviacion_media_abs_pp, 1)` pp (simples) según el método de normalización. Todas mejoran el Brier de predecir con la frecuencia histórica en `r rg(brier_df$Mejora_vs_frecuencia_pct, 1)` %.
+Las cuotas de las casas analizadas están **bien calibradas en términos prácticos**: el error atribuible a descalibración (fiabilidad de Murphy) no supera `r fmt(rel_max, 4)` (como máximo `r fmt(max(rel_pct), 2)`% del Brier en la muestra común; por liga, hasta `r fmt(max(rel_liga_pct), 2)`%), y las desviaciones medias van de `r rg(sens_conc$Desviacion_pond_pp, 1)` pp (ponderadas por N) o de `r rg(sens_conc$Desviacion_media_abs_pp, 1)` pp (simples) según el método de normalización. Todas mejoran el Brier de predecir con la frecuencia histórica en `r rg(brier_df$Mejora_vs_frecuencia_pct, 1)` %.
 
 Con matices importantes:
 
 1. **Descalibración estadística**: tras corregir por comparaciones múltiples, los rechazos de Hosmer-Lemeshow son `r paste(rech_met$h, collapse = ", ")` (multiplicativo, aditivo, Shin). Las combinaciones que rechazan sin ajuste con los tres métodos son: `r txt_comb`. Al excluir los `r n_excl` partidos posteriores a la reanudación por COVID-19, los rechazos con Holm cambian así según el método: `r txt_hl_covid`; dejan de rechazar: `r unir(perdidos)`; `r if (length(perdidos) > 0) "esos rechazos no son robustos a la exclusión de esos partidos." else "ningún rechazo depende de esos partidos."` `r txt_concl_rem`
 2. **Sesgo favorito-longshot**: con el método multiplicativo es robusto en `r unir(rob_m)`; con Shin es robusto en `r unir(rob_s)`. Los datos no permiten decidir entre un sesgo real del mercado y un efecto de cómo se reparte el margen.
-3. **Orden entre casas**: `r paste(orden_casas, collapse = " < ")` por Brier (menor es mejor), `r if (mismo_orden) "igual con los tres métodos" else "con variaciones según el método"`, con diferencias de `r fmt(min(abs(comp_apar$Dif_Brier)), 4)` a `r fmt(max(abs(comp_apar$Dif_Brier)), 4)`. `r if (ic_incluye_0 > 0) paste0("En ", paste(comp_ic0, collapse = ", "), " la diferencia no es firme: el IC bootstrap por bloques de la diferencia media incluye el 0. ") else ""`Las cuotas de cierre de `r op_ci` mejoran las de `r op_ap` en `r fmt(ac_b$Mejora_cierre_pct, 2)`% de Brier.
+3. **Orden entre casas**: `r paste(orden_casas, collapse = " < ")` por Brier (menor es mejor), `r if (mismo_orden) "igual con los tres métodos" else "con variaciones según el método"`, con diferencias de `r fmt(min(abs(comp_apar$Dif_Brier)), 4)` a `r fmt(max(abs(comp_apar$Dif_Brier)), 4)`. `r if (length(pares_no_firmes) > 0) paste0("La separación supera la variación por método solo en ", unir(pares_firmes), ". ") else ""``r if (ic_incluye_0 > 0) paste0("En ", paste(comp_ic0, collapse = ", "), " la diferencia no es firme: el IC bootstrap por bloques de la diferencia media incluye el 0. ") else ""`Las cuotas de cierre de `r op_ci` mejoran las de `r op_ap` en `r fmt(ac_b$Mejora_cierre_pct, 2)`% de Brier.
 4. **Margen**: entre `r fmt(min(margen_op$Margen_Medio_pct), 1)`% (`r margen_op$Operador[1]`) y `r fmt(max(margen_op$Margen_Medio_pct), 1)`% (`r margen_op$Operador[nrow(margen_op)]`), con diferencias entre ligas en algunas casas. Como consecuencia aritmética del margen, el valor esperado de apostar de forma sostenida es negativo aun con probabilidades perfectamente calibradas.
 
 Este estudio mide calibración marginal de las cuotas 1X2. No evalúa si existe información adicional que permitiría predecir mejor, por lo que no se concluye eficiencia informativa del mercado.

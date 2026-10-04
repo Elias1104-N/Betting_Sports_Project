@@ -1,14 +1,4 @@
-# ============================================================
-# Proyecto 2 - ¿Están bien calibradas las casas de apuestas?
 # Fase 2: De cuotas a probabilidades - el tratamiento del margen
-# ============================================================
-# Parte de base_consolidada.csv (generado en la Fase 1).
-# Calcula probabilidades brutas, el margen del operador, y aplica
-# al menos dos métodos de remoción del margen (requisito de la
-# rúbrica, criterio C). Documenta la distribución del margen y
-# compara qué tanto cambian las conclusiones entre métodos
-# (análisis de sensibilidad).
-# ============================================================
 
 source("config.R")
 
@@ -95,7 +85,7 @@ normalizar_aditivo <- function(pH, pD, pA) {
   list(H = pH - exceso, D = pD - exceso, A = pA - exceso)
 }
 
-# Método 3 (bonificable): Método de Shin
+# Método 3: Método de Shin
 # Resuelve numéricamente el parámetro z (proporción de "apostadores
 # informados") tal que las probabilidades ajustadas sean consistentes.
 # Referencia: Shin (1993), "Measuring the Incidence of Insider Trading
@@ -155,10 +145,8 @@ for (op in operadores) {
   base <- aplicar_metodos(base, op)
 }
 
-# Shin es más exigente computacionalmente al resolver numéricamente z
-# para cada partido. Se aplica a todos los OPERADORES_PRINCIPALES
+# Shin se aplica a todos los OPERADORES_PRINCIPALES
 # (B365, PS, PSC, WH) para permitir el análisis de sensibilidad completo
-# y obtener la bonificación de +3 puntos (Criterio C).
 operadores_shin <- intersect(OPERADORES_PRINCIPALES, operadores)
 
 for (op_s in operadores_shin) {
@@ -269,7 +257,7 @@ message(" - distribucion_margen.csv")
 message(" - sensibilidad_metodos.csv (H, D y A)")
 message(" - aditivo_filas_anuladas.csv")
 
-# ---- 6. Resumen final (para copiar y revisar de un vistazo) -----
+# ---- 6. Resumen final -----
 mostrar_resumen_fase2 <- function() {
   # Medias ponderadas por número de partidos (no promedio simple de medias por
   # liga-temporada). Ojo: operadores con cobertura distinta (p. ej. cierres solo

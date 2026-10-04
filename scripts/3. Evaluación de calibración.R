@@ -1,22 +1,4 @@
-# ============================================================
-# Proyecto 2 - ¿Están bien calibradas las casas de apuestas?
 # Fase 3: Evaluación de la calibración e inferencia estadística
-# ============================================================
-# Lee base_con_probabilidades.csv (Fase 2).
-# Incluye:
-# 1. Muestra común apareada (partidos con cuotas en todos los operadores)
-# 2. Curvas de calibración con intervalos de Wilson e intervalos bootstrap
-#    por partido (los 3 resultados de un mismo partido no son independientes)
-# 3. Curvas desagregadas por resultado (H, D, A) y por liga
-# 4. Reglas de puntuación: Brier Score vs. líneas base
-# 5. BONIFICACIÓN: Descomposición de Murphy (Reliability, Resolution, Uncertainty)
-# 6. BONIFICACIÓN: Ranked Probability Score (RPS) para el mercado ordinal 1X2
-# 7. Sensibilidad de conclusiones (Multiplicativo vs. Aditivo vs. Shin)
-# 8. Inferencia apareada ENTRE CASAS (Friedman + Wilcoxon con Holm + IC bootstrap
-#    por bloques de la diferencia media). Las cuotas de cierre se comparan aparte (Fase 4).
-# 9. Hosmer-Lemeshow SEPARADO POR RESULTADO (H/D/A), con desviación simple y ponderada
-# 10. Sensibilidad al esquema de agrupamiento y a los partidos post-reanudación COVID-19
-# ============================================================
 
 source("config.R")
 set.seed(SEMILLA)
@@ -240,7 +222,7 @@ tabla_brier <- rbindlist(lapply(OPERADORES_PRINCIPALES, calcular_brier_completo,
 message("\n---- Brier Score por operador (Muestra común, Multiplicativo) ----")
 print(tabla_brier)
 
-# ---- 4. BONIFICACIÓN: Descomposición de Murphy del Brier ------------
+# ---- 4.Descomposición de Murphy del Brier ------------
 # Brier multiclase = Reliability - Resolution + Uncertainty
 # Para cada resultado binario j in {H, D, A}:
 #   UNC_j = bar_o_j * (1 - bar_o_j)
@@ -311,7 +293,7 @@ print(tabla_murphy)
 message("Nota metodológica: Fiabilidad mide descalibramiento (cercano a 0 es ideal);")
 message("Resolución mide capacidad discriminativa (mayor es mejor); Incertidumbre es constante.")
 
-# ---- 5. BONIFICACIÓN: Ranked Probability Score (RPS) ----------------
+# ---- 5. Ranked Probability Score (RPS) ----------------
 # El RPS penaliza más fuerte los pronósticos alejados del resultado en la escala
 # ordenada natural: Victoria Local (H) <-> Empate (D) <-> Victoria Visitante (A).
 # RPS = 0.5 * [ (p_H - o_H)^2 + ((p_H + p_D) - (o_H + o_D))^2 ]
@@ -773,7 +755,7 @@ mostrar_resumen_fase3 <- function() {
                      by = "Operador")
   print(comp_metr)
   cat("--------------------------------------------------------------------------\n")
-  cat("Bonificación Murphy (Brier = Fiabilidad - Resolución + Incertidumbre):\n")
+  cat("Murphy (Brier = Fiabilidad - Resolución + Incertidumbre):\n")
   print(tabla_murphy[, .(Operador, Fiabilidad_Reliability, Resolucion_Resolution, Incertidumbre_Uncertainty, Brier_calculado, Brier_real, Termino_intrabin)])
   cat("--------------------------------------------------------------------------\n")
   cat("Sensibilidad metodológica (Brier y desviación por método de margen):\n")
