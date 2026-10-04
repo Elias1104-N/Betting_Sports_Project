@@ -248,7 +248,7 @@ message(sprintf("Listo. Archivos guardados en %s/:", DIR_OUT))
 message(" - base_consolidada.csv")
 message(" - inventario_cobertura.csv")
 
-# ---- 8. Resumen final (para copiar y revisar de un vistazo) ------------------
+# ---- 8. Resumen final ------------------
 
 mostrar_resumen_fase1 <- function() {
   cat("\n")
