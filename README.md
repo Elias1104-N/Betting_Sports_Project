@@ -36,8 +36,9 @@ Todo el alcance (ligas, temporadas, operadores) y los parámetros metodológicos
 
 > **Nota sobre Pinnacle:** football-data.co.uk advierte que las cuotas de Pinnacle publicadas después del 23 de julio de 2025 son poco confiables (su API de entrega quedó desactualizada). El alcance de este proyecto (2012–2019) es anterior a esa fecha, por lo que no afecta ningún resultado. Aun así, el flujo incluye una guarda en la Fase 1: si se amplía el alcance a temporadas posteriores, las cuotas PS/PSC de los partidos desde esa fecha se anulan (NA) automáticamente para no medir un artefacto de recolección. La fecha de corte y los prefijos afectados se definen en `config.R`.
 
-![Margen Comercial](documentos/Margen Comercial.png) *Ejemplo de salida del reporte autogenerado (outputs/reporte_calibracion.html)*
+![Margen Comercial](documentos/Margen%20Comercial.png)
 
+*Ejemplo de salida del reporte autogenerado (outputs/reporte_calibracion.html)*
 
 ## Estructura del repositorio
 
